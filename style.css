@@ -1,16 +1,48 @@
-/* Customizações finas para o mapa e comportamento do app */
-.leaflet-vizin-icon { 
-    background: none; 
-    border: none; 
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* FORÇA O MAPA A FICAR NO FUNDO ABSOLUTO E SEM BORDAS */
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background-color: #f8f9fa; /* Fundo cinza super claro */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
-/* Garante que o input no iOS não dê zoom na tela */
-input, textarea {
-    font-size: 16px !important;
+#map {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1; /* O mapa fica lá no fundo */
 }
 
-/* Estilo para a barra de rolagem sumir mas continuar rolando (útil no mobile) */
-::-webkit-scrollbar {
-    width: 0px;
-    background: transparent; 
+/* ESCONDE A LOGO DO LEAFLET E OS BOTÕES DE ZOOM PADRÃO */
+.leaflet-control-attribution { display: none !important; }
+.leaflet-control-zoom { display: none !important; }
+
+/* AREA SEGURA PARA IPHONES E ANDROIDS MODERNOS */
+.pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
+.pt-safe { padding-top: env(safe-area-inset-top, 40px); }
+
+/* ESTILO DA NAVEGAÇÃO INFERIOR */
+.bottom-nav-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    color: #8e8e93; /* Cinza inativo */
+    transition: color 0.2s;
+    background: transparent;
+    border: none;
+    width: 33%;
+}
+.bottom-nav-btn.active {
+    color: #000000; /* Preto ativo padrão Uber */
 }

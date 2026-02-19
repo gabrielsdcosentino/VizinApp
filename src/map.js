@@ -11,7 +11,7 @@ export function initMap() {
     if (map) { setTimeout(() => map.invalidateSize(), 100); return; }
 
     map = L.map('map', { zoomControl: false }).setView([-23.1791, -45.8872], 14);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
     setTimeout(() => map.invalidateSize(), 100);
 
     onSnapshot(collection(db, "servicos"), (snap) => {
