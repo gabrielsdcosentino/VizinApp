@@ -13,13 +13,19 @@ export function setupProfile() {
     btnOpenProfile.onclick = async () => {
         showScreen('screen-profile');
         
-        // Carregar dados existentes
+        // 1. O SEGREDO: Limpar os campos ANTES de tentar carregar os dados
+        // Isso evita que dados de outro usuário fiquem "presos" na tela
+        document.getElementById('profileName').value = '';
+        document.getElementById('profilePhone').value = '';
+        
+        // 2. Carregar dados existentes
         const user = auth.currentUser;
         if(user) {
             try {
                 const docSnap = await getDoc(doc(db, "users", user.uid));
                 if (docSnap.exists()) {
                     const data = docSnap.data();
+                    // Se o usuário tem dados no banco, preenchemos os campos
                     document.getElementById('profileName').value = data.name || '';
                     document.getElementById('profilePhone').value = data.phone || '';
                 }
@@ -66,12 +72,21 @@ export function setupProfile() {
 
     // Deslogar
     btnLogout.onclick = async () => {
+        // Limpa os campos de perfil por segurança na hora de sair
+        document.getElementById('profileName').value = '';
+        document.getElementById('profilePhone').value = '';
+        
+        // Limpa também os campos de e-mail e senha da tela de login
+        document.getElementById('authEmail').value = '';
+        document.getElementById('authPassword').value = '';
+        document.getElementById('authStatus').innerText = '';
+
         await signOut(auth);
-        // O main.js vai detectar o logout e voltar para a tela de login
+        // O main.js vai detectar o logout e voltar para a tela de login limpa
     };
 }
 
-// Função exportada para o mapa poder ler os dados de quem aceitou o serviço
+// Função exportada para o mapa poder ler os dados
 export async function getUserProfile() {
     try {
         const docSnap = await getDoc(doc(db, "users", auth.currentUser.uid));
