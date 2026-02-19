@@ -1,6 +1,7 @@
 import L from 'leaflet';
 import { db, auth } from './firebaseConfig.js';
-import { collection, doc, updateDoc, onSnapshot } from "firebase/firestore";
+// ERRO 1 CORRIGIDO: addDoc e serverTimestamp adicionados aqui!
+import { collection, doc, updateDoc, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore";
 import { getUserProfile } from './profile.js'; 
 
 let map, markers = {};
@@ -94,12 +95,74 @@ export function initMap() {
         }
     }
 
-    // Configuração dos Botões Flutuantes (com as novas IDs do HTML)
-    document.getElementById('btnGps').onclick = () => {
-        navigator.geolocation.getCurrentPosition(p => map.flyTo([p.coords.latitude, p.coords.longitude], 17));
+    // ==========================================
+    // LÓGICA DO NOVO PEDIDO
+    // ==========================================
+    const modalOrder = document.getElementById('modalNewOrder');
+
+    // Abre o formulário
+    document.getElementById('btnAddOrder').onclick = () => {
+        modalOrder.classList.remove('hidden');
+        modalOrder.classList.add('flex');
     };
 
-    document.getElementById('btnAddOrder').onclick = () => {
-        alert("Abra o formulário de novo pedido");
+    // Fecha o formulário
+    document.getElementById('btnCloseOrderModal').onclick = () => {
+        modalOrder.classList.add('hidden');
+        modalOrder.classList.remove('flex');
     };
-}
+
+    // Salvar o pedido no banco
+    document.getElementById('btnSubmitOrder').onclick = async () => {
+        const title = document.getElementById('orderTitle').value.trim();
+        const desc = document.getElementById('orderDesc').value.trim();
+        const value = document.getElementById('orderValue').value.trim();
+        
+        if (!title || !value) return alert("Preencha o título e o valor!");
+
+        const btn = document.getElementById('btnSubmitOrder');
+        btn.innerText = "Publicando...";
+        btn.disabled = true;
+
+        try {
+            // Pegamos o centro exato da tela atual do mapa para colocar o pino
+            const center = map.getCenter();
+            
+            await addDoc(collection(db, "servicos"), {
+                titulo: title,
+                descricao: desc,
+                valor: value,
+                lat: center.lat,
+                lng: center.lng,
+                status: "aberto",
+                autor: auth.currentUser.email, // Salva quem pediu
+                criadoEm: serverTimestamp()
+            });
+
+            // Limpa os campos depois de salvar
+            document.getElementById('orderTitle').value = '';
+            document.getElementById('orderDesc').value = '';
+            document.getElementById('orderValue').value = '';
+            
+            // Fecha a tela
+            modalOrder.classList.add('hidden');
+            modalOrder.classList.remove('flex');
+            
+        } catch (error) {
+            console.error("Erro ao criar pedido:", error);
+            alert("Erro ao publicar o pedido.");
+        } finally {
+            btn.innerText = "Publicar Pedido";
+            btn.disabled = false;
+        }
+    };
+
+    // ERRO 2 CORRIGIDO: Lógica do botão GPS restaurada
+    document.getElementById('btnGps').onclick = () => {
+        navigator.geolocation.getCurrentPosition(
+            p => map.flyTo([p.coords.latitude, p.coords.longitude], 17),
+            err => alert("Ative a localização do navegador para usar o GPS.")
+        );
+    };
+
+} // ERRO 3 CORRIGIDO: Faltava essa chave para fechar o initMap!
