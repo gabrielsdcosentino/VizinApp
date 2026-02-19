@@ -1,0 +1,47 @@
+name: Gerar APK Android
+
+on:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 1. Baixar o Código
+        uses: actions/checkout@v3
+
+      - name: 2. Preparar o Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: 3. Instalar Dependências e Construir Web
+        run: |
+          npm install
+          npm run build
+
+      - name: 4. Preparar o Java e Android
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: 5. Sincronizar Capacitor (O Motor do App)
+        run: |
+          npm install @capacitor/android
+          npx cap add android || true
+          npx cap sync android
+
+      - name: 6. Compilar o APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: 7. Salvar e Entregar o APK
+        uses: actions/upload-artifact@v3
+        with:
+          name: VizinApp-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk

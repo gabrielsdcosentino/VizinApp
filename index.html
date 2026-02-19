@@ -3,156 +3,110 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>VizinApp</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>VizinApp Pro</title>
+    
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@ionic/core/dist/ionic/ionic.esm.js"></script>
+    <script nomodule src="https://cdn.jsdelivr.net/npm/@ionic/core/dist/ionic/ionic.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@ionic/core/css/ionic.bundle.css" />
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
+    <ion-app>
 
-    <div id="screen-login" class="absolute inset-0 z-[9000] flex flex-col items-center justify-center p-6 bg-white transition-opacity duration-300">
-        <div class="w-full max-w-sm">
-            <h1 class="text-5xl font-black text-black mb-2 text-center tracking-tighter">Uber<span class="text-blue-600">Vizin</span></h1>
-            <p class="text-slate-500 mb-10 text-center font-medium">A sua vizinhança na palma da mão.</p>
-            <input type="email" id="authEmail" placeholder="O seu e-mail" class="w-full p-4 mb-4 bg-slate-100 rounded-2xl outline-none focus:ring-2 ring-black font-medium transition-all">
-            <input type="password" id="authPassword" placeholder="A sua senha" class="w-full p-4 mb-6 bg-slate-100 rounded-2xl outline-none focus:ring-2 ring-black font-medium transition-all">
-            <button id="btnLogin" class="w-full py-4 bg-black text-white rounded-2xl font-bold text-lg mb-3 active:scale-95 transition-transform">Entrar</button>
-            <button id="btnRegister" class="w-full py-4 bg-slate-100 text-black rounded-2xl font-bold text-lg active:scale-95 transition-transform">Criar nova conta</button>
-            <p id="authStatus" class="mt-4 text-center font-bold text-sm h-6 text-red-500"></p>
-        </div>
-    </div>
-
-    <div id="screen-app" class="absolute inset-0 z-[10] hidden">
-        <div id="map"></div>
-        
-        <div class="absolute top-0 w-full pt-safe px-4 z-[1000] pointer-events-none">
-            <div id="btnAddOrder" class="bg-white shadow-xl shadow-slate-200/50 rounded-full p-4 flex items-center gap-4 pointer-events-auto cursor-pointer active:scale-95 transition-transform border border-slate-100">
-                <div class="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6"><path fill-rule="evenodd" d="M10.5 3.75a6.75 6.75 0 100 13.5 6.75 6.75 0 000-13.5zM2.25 10.5a8.25 8.25 0 1114.59 5.28l4.69 4.69a.75.75 0 11-1.06 1.06l-4.69-4.69A8.25 8.25 0 012.25 10.5z" clip-rule="evenodd" /></svg>
+        <div id="screen-login" class="ion-page">
+            <ion-content class="ion-padding" color="light">
+                <div style="display: flex; flex-direction: column; justify-content: center; height: 100%; max-width: 400px; margin: 0 auto;">
+                    <h1 style="text-align: center; font-size: 3.5rem; font-weight: 900; margin-bottom: 5px; letter-spacing: -2px;">Vizin<span style="color: var(--ion-color-secondary);">Vizin</span></h1>
+                    <p style="text-align: center; color: #666; margin-bottom: 40px; font-weight: 500;">A sua vizinhança conectada.</p>
+                    
+                    <ion-card style="margin: 0 0 20px 0; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+                        <ion-item lines="full">
+                            <ion-icon name="mail-outline" slot="start" color="medium"></ion-icon>
+                            <ion-input id="authEmail" type="email" label="E-mail" label-placement="floating" placeholder="Digite seu e-mail"></ion-input>
+                        </ion-item>
+                        <ion-item lines="none">
+                            <ion-icon name="lock-closed-outline" slot="start" color="medium"></ion-icon>
+                            <ion-input id="authPassword" type="password" label="Senha" label-placement="floating" placeholder="Sua senha secreta"></ion-input>
+                        </ion-item>
+                    </ion-card>
+                    
+                    <ion-button id="btnLogin" expand="block" shape="round" style="margin-bottom: 15px; height: 50px; font-weight: bold;">Entrar</ion-button>
+                    <ion-button id="btnRegister" expand="block" fill="clear" shape="round" color="dark">Criar Conta Nova</ion-button>
+                    
+                    <p id="authStatus" style="text-align: center; color: var(--ion-color-danger); margin-top: 20px; font-weight: bold;"></p>
                 </div>
-                <div>
-                    <h3 class="font-bold text-black text-lg leading-tight">Para onde?</h3>
-                    <p class="text-slate-400 text-sm font-medium">Ou melhor, o que precisa hoje?</p>
-                </div>
-            </div>
-        </div>
-
-        <button id="btnGps" class="absolute bottom-28 right-4 z-[1000] w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center text-slate-700 active:scale-90 transition-transform">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6"><path fill-rule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" /></svg>
-        </button>
-
-        <nav class="absolute bottom-0 w-full bg-white border-t border-slate-200 z-[2000] flex justify-between pb-safe pt-2">
-            <button class="bottom-nav-btn active" onclick="document.getElementById('screen-app').classList.remove('hidden')">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-7 h-7"><path d="M11.47 3.841a.75.75 0 011.06 0l8.69 8.69a.75.75 0 101.06-1.061l-8.689-8.69a2.25 2.25 0 00-3.182 0l-8.69 8.69a.75.75 0 001.061 1.06l8.69-8.689z" /><path d="M12 5.432l8.159 8.159c.03.03.06.058.091.086v6.198c0 1.035-.84 1.875-1.875 1.875H15a.75.75 0 01-.75-.75v-4.5a.75.75 0 00-.75-.75h-3a.75.75 0 00-.75.75V21a.75.75 0 01-.75.75H5.625a1.875 1.875 0 01-1.875-1.875v-6.198a2.29 2.29 0 00.091-.086L12 5.43z" /></svg>
-                <span class="text-[10px] font-bold">Início</span>
-            </button>
-            <button id="btnOpenOrders" class="bottom-nav-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-7 h-7"><path fill-rule="evenodd" d="M2.625 6.75a.75.75 0 01.75-.75h17.25a.75.75 0 01.75.75v10.5a.75.75 0 01-.75.75H3.375a.75.75 0 01-.75-.75V6.75zm1.5.75v9h15.75v-9H4.125z" clip-rule="evenodd" /></svg>
-                <span class="text-[10px] font-bold">Atividade</span>
-            </button>
-            <button id="btnOpenProfile" class="bottom-nav-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-7 h-7"><path fill-rule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clip-rule="evenodd" /></svg>
-                <span class="text-[10px] font-bold">Conta</span>
-            </button>
-        </nav>
-
-        <div id="overlayContainer" class="fixed inset-0 z-[3000] pointer-events-none">
-            <div id="bottomSheet" class="absolute bottom-0 w-full bg-white rounded-t-[32px] p-6 shadow-2xl translate-y-full transition-transform duration-300 pointer-events-auto pb-safe">
-                <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6"></div>
-                <div id="sheetContent"></div>
-            </div>
+            </ion-content>
         </div>
 
-        <div id="modalNewOrder" style="z-index: 9999;" class="fixed inset-0 bg-black/60 hidden flex-col justify-end px-4 backdrop-blur-sm transition-opacity pb-safe">
-            <div class="bg-white w-full max-w-md mx-auto rounded-t-[32px] p-6 shadow-2xl" onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-2xl font-black text-black">Detalhes do Pedido</h2>
-                    <button id="btnCloseOrderModal" class="bg-slate-100 rounded-full w-8 h-8 flex items-center justify-center font-bold text-slate-500 active:scale-90">&times;</button>
-                </div>
-                <input id="orderTitle" type="text" placeholder="O que você precisa?" class="w-full p-4 mb-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 ring-black font-medium">
-                <textarea id="orderDesc" rows="2" placeholder="Detalhes adicionais" class="w-full p-4 mb-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 ring-black font-medium"></textarea>
-                <div class="flex items-center mb-6 bg-slate-50 border border-slate-200 rounded-2xl p-4">
-                    <span class="text-xl font-black text-black mr-3">R$</span>
-                    <input id="orderValue" type="number" placeholder="0.00" class="w-full bg-transparent outline-none font-bold text-lg">
-                </div>
-                <button id="btnSubmitOrder" class="w-full py-4 bg-black text-white rounded-2xl font-bold active:scale-95 shadow-lg">Confirmar e Pagar</button>
-            </div>
-        </div>
-
-        <div id="modalRating" style="z-index: 9999;" class="fixed inset-0 bg-black/60 hidden flex-col justify-center px-4 backdrop-blur-sm transition-opacity">
-            <div class="bg-white w-full max-w-sm mx-auto rounded-[32px] p-6 shadow-2xl text-center" onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()">
-                <div class="w-16 h-16 bg-black text-white rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">✓</div>
-                <h2 class="text-2xl font-black text-black mb-2">Concluído!</h2>
-                <p class="text-slate-500 mb-6">Como foi a ajuda de <b id="ratingWorkerName" class="text-black"></b>?</p>
-                <div class="flex justify-center gap-2 mb-8" id="starContainer">
-                    <button class="star-btn text-4xl text-slate-200 hover:text-yellow-400 transition-colors" data-value="1">★</button>
-                    <button class="star-btn text-4xl text-slate-200 hover:text-yellow-400 transition-colors" data-value="2">★</button>
-                    <button class="star-btn text-4xl text-slate-200 hover:text-yellow-400 transition-colors" data-value="3">★</button>
-                    <button class="star-btn text-4xl text-slate-200 hover:text-yellow-400 transition-colors" data-value="4">★</button>
-                    <button class="star-btn text-4xl text-slate-200 hover:text-yellow-400 transition-colors" data-value="5">★</button>
-                </div>
-                <button id="btnSubmitRating" class="w-full py-4 bg-black text-white rounded-2xl font-bold text-lg active:scale-95" disabled>Avaliar</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="screen-orders" class="absolute inset-0 bg-slate-50 z-[4000] hidden flex-col pb-safe">
-        <header class="pt-safe px-6 pb-4 bg-white border-b border-slate-100 flex justify-between items-center">
-            <h2 class="text-3xl font-black text-black">Atividade</h2>
-            <button id="btnCloseOrders" class="bg-slate-100 p-2 rounded-full font-bold active:scale-95">&times;</button>
-        </header>
-        <div class="p-6 flex-1 overflow-y-auto">
-            <div class="flex mb-6 gap-2 bg-slate-200 p-1 rounded-2xl">
-                <button id="tabPedi" class="flex-1 py-3 bg-white text-black rounded-xl font-bold shadow-sm">Eu Pedi</button>
-                <button id="tabAceitei" class="flex-1 py-3 bg-transparent text-slate-500 rounded-xl font-bold">Eu Ajudei</button>
-            </div>
-            <div id="ordersList" class="space-y-4"></div>
-        </div>
-    </div>
-
-    <div id="screen-profile" class="absolute inset-0 bg-slate-50 z-[5000] hidden flex-col pb-safe">
-        <header class="pt-safe px-6 pb-4 bg-white border-b border-slate-100 flex justify-between items-center">
-            <h2 class="text-3xl font-black text-black">Conta</h2>
-            <button id="btnCloseProfile" class="bg-slate-100 p-2 rounded-full font-bold active:scale-95">&times;</button>
-        </header>
-        <div class="p-6 flex-1 overflow-y-auto">
-            <div class="flex gap-3 mb-6">
-                <div class="flex-1 bg-black text-white p-5 rounded-[24px] shadow-xl relative overflow-hidden">
-                    <p class="text-slate-400 font-medium mb-1 text-xs uppercase">Saldo Vizin</p>
-                    <h3 class="text-3xl font-black">R$ <span id="profileSaldo">0,00</span></h3>
-                </div>
-                <div class="flex-1 bg-white border border-slate-100 p-5 rounded-[24px] flex flex-col justify-center items-center shadow-sm">
-                    <p class="text-slate-400 font-medium mb-1 text-xs uppercase">Reputação</p>
-                    <h3 class="text-3xl font-black text-black flex items-center gap-1">
-                        <span id="profileRating">Novo</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-yellow-400"><path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.434c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.434 2.082-5.005z" clip-rule="evenodd" /></svg>
-                    </h3>
-                </div>
-            </div>
+        <div id="screen-app" class="ion-page" style="display: none;">
             
-            <input id="profileName" type="text" placeholder="Nome Completo" class="w-full p-4 mb-4 bg-white rounded-2xl outline-none border border-slate-200 focus:border-black font-medium">
-            <input id="profileCpf" type="text" maxlength="11" placeholder="CPF (Apenas números)" class="w-full p-4 mb-4 bg-white rounded-2xl outline-none border border-slate-200 focus:border-black font-medium">
-            <input id="profilePhone" type="tel" placeholder="WhatsApp (DDD + Número)" class="w-full p-4 mb-8 bg-white rounded-2xl outline-none border border-slate-200 focus:border-black font-medium">
-            
-            <button id="btnSaveProfile" class="w-full py-4 bg-black text-white rounded-2xl font-bold shadow-lg active:scale-95 mb-3 transition-all">Guardar</button>
-            <button id="btnLogout" class="w-full py-4 mt-4 bg-red-50 text-red-600 rounded-2xl font-bold active:scale-95 border border-red-100">Sair da Conta</button>
-        </div>
-    </div>
+            <ion-content scroll-y="false">
+                <div id="map"></div>
+                
+                <div style="position: absolute; top: env(safe-area-inset-top, 20px); left: 16px; right: 16px; z-index: 1000;">
+                    <ion-card id="btnAddOrder" style="margin: 0; border-radius: 24px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); cursor: pointer;">
+                        <ion-item lines="none" detail="false" style="--padding-start: 20px; --padding-top: 10px; --padding-bottom: 10px;">
+                            <ion-icon name="search" slot="start" style="font-size: 24px;" color="dark"></ion-icon>
+                            <ion-label>
+                                <h2 style="font-weight: 800; font-size: 1.2rem; color: #000;">Para onde?</h2>
+                                <p style="font-weight: 500;">Ou melhor, o que você precisa hoje?</p>
+                            </ion-label>
+                        </ion-item>
+                    </ion-card>
+                </div>
 
-    <div id="screen-chat" class="absolute inset-0 bg-slate-50 z-[6000] hidden flex-col pb-safe">
-        <header class="pt-safe px-4 pb-4 bg-white shadow-sm flex items-center gap-3">
-            <button id="btnCloseChat" class="bg-slate-100 p-2 rounded-full font-bold text-black active:scale-90">&times;</button>
-            <div>
-                <h2 class="font-black text-lg text-black leading-tight" id="chatTitle">Chat</h2>
-                <p class="text-xs text-green-600 font-bold">Conexão Segura</p>
-            </div>
-        </header>
-        <main id="chatMessages" class="flex-1 overflow-y-auto p-4 space-y-3 flex flex-col bg-slate-100"></main>
-        <footer class="bg-white p-3 border-t border-slate-200 flex gap-2">
-            <input type="text" id="chatInput" class="flex-1 p-4 bg-slate-100 rounded-2xl outline-none focus:ring-2 ring-black font-medium" placeholder="Escreva a sua mensagem...">
-            <button id="btnSendChat" class="bg-black px-6 rounded-2xl text-white font-bold active:scale-95 shadow-md">Enviar</button>
-        </footer>
-    </div>
+                <ion-fab vertical="bottom" horizontal="end" slot="fixed" style="margin-bottom: 16px; margin-right: 16px;">
+                    <ion-fab-button id="btnGps" color="light" style="box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                        <ion-icon name="locate"></ion-icon>
+                    </ion-fab-button>
+                </ion-fab>
+            </ion-content>
+
+            <ion-footer>
+                <ion-toolbar style="--background: rgba(255,255,255,0.9); --backdrop-filter: blur(10px);">
+                    <ion-segment value="inicio" mode="md">
+                        <ion-segment-button value="inicio" onclick="document.getElementById('screen-app').style.display='block'">
+                            <ion-icon name="home"></ion-icon>
+                            <ion-label style="font-size: 10px; font-weight: bold;">Início</ion-label>
+                        </ion-segment-button>
+                        <ion-segment-button value="atividade" id="btnOpenOrders">
+                            <ion-icon name="receipt"></ion-icon>
+                            <ion-label style="font-size: 10px; font-weight: bold;">Atividade</ion-label>
+                        </ion-segment-button>
+                        <ion-segment-button value="conta" id="btnOpenProfile">
+                            <ion-icon name="person"></ion-icon>
+                            <ion-label style="font-size: 10px; font-weight: bold;">Conta</ion-label>
+                        </ion-segment-button>
+                    </ion-segment>
+                </ion-toolbar>
+            </ion-footer>
+        </div>
+
+        <ion-modal id="modalNewOrder" initial-breakpoint="0.6" breakpoints="[0, 0.6, 0.9]">
+            <ion-content class="ion-padding">
+                <div style="width: 40px; height: 4px; background: #ccc; border-radius: 4px; margin: 10px auto 20px;"></div>
+                <h2 style="font-weight: 900; font-size: 1.5rem; margin-bottom: 20px;">Detalhes do Pedido</h2>
+                
+                <ion-list style="border-radius: 16px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px;">
+                    <ion-item lines="full">
+                        <ion-input id="orderTitle" label="O que precisa?" label-placement="floating" placeholder="Ex: Comprar pão"></ion-input>
+                    </ion-item>
+                    <ion-item lines="full">
+                        <ion-textarea id="orderDesc" label="Detalhes" label-placement="floating" placeholder="Instruções adicionais"></ion-textarea>
+                    </ion-item>
+                    <ion-item lines="none">
+                        <ion-icon name="cash-outline" slot="start" color="success"></ion-icon>
+                        <ion-input id="orderValue" type="number" label="Valor a pagar (R$)" label-placement="floating" placeholder="0.00"></ion-input>
+                    </ion-item>
+                </ion-list>
+                
+                <ion-button id="btnSubmitOrder" expand="block" shape="round" style="height: 55px; font-weight: bold; font-size: 1.1rem;">Confirmar e Pagar</ion-button>
+            </ion-content>
+        </ion-modal>
+
+    </ion-app>
 
     <script type="module" src="/main.js"></script>
 </body>
