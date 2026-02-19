@@ -8,10 +8,12 @@ let map, markers = {};
 export function initMap() {
     if (map) { setTimeout(() => map.invalidateSize(), 100); return; }
 
+    // Inicializa o Mapa
     map = L.map('map', { zoomControl: false }).setView([-23.1791, -45.8872], 14);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
     setTimeout(() => map.invalidateSize(), 100);
 
+    // Escuta o Banco de Dados para os Pinos
     onSnapshot(collection(db, "servicos"), (snap) => {
         snap.forEach(d => {
             const data = d.data();
@@ -47,6 +49,7 @@ export function initMap() {
         });
     });
 
+    // Função de Mostrar Detalhes (Bottom Sheet)
     function showDetails(id, data) {
         const isMine = data.autor === auth.currentUser.email;
         const phoneToCall = isMine ? data.workerPhone : data.creatorPhone;
@@ -96,21 +99,80 @@ export function initMap() {
                     const prof = await getUserProfile();
                     if(!prof || !prof.cpf) return alert("Valide sua identidade no perfil antes de aceitar!");
                     await updateDoc(ref, { status: "aceito", worker: auth.currentUser.uid, workerName: prof.name, workerPhone: prof.phone });
+                    sheet.classList.add('translate-y-full');
                 } else {
-                    // MÁGICA DA OPÇÃO B (LIBERAR PAGAMENTO PARA O TRABALHADOR)
-                    if(confirm("Confirma que o serviço foi concluído? O dinheiro será transferido para quem ajudou.")){
-                        const valorNum = parseFloat(data.valor);
-                        // 1. Paga o trabalhador
-                        await updateDoc(doc(db, "users", data.worker), { saldo: increment(valorNum) });
-                        // 2. Finaliza a ordem
-                        await updateDoc(ref, { status: "concluido" });
+                    // SE CLICOU EM FINALIZAR, CHAMA A AVALIAÇÃO
+                    if(confirm("Confirma que o serviço foi concluído? O dinheiro será transferido agora.")){
+                        abrirModalAvaliacao(id, data);
+                        sheet.classList.add('translate-y-full');
                     }
                 }
-                sheet.classList.add('translate-y-full');
             };
         }
     }
 
+    // ==========================================
+    // LÓGICA DE AVALIAÇÃO (ESTRELAS) E PAGAMENTO
+    // ==========================================
+    let notaSelecionada = 0;
+    const modalRating = document.getElementById('modalRating');
+    const stars = document.querySelectorAll('.star-btn');
+    const btnSubmitRating = document.getElementById('btnSubmitRating');
+
+    stars.forEach(star => {
+        star.onclick = (e) => {
+            notaSelecionada = parseInt(e.target.getAttribute('data-value'));
+            btnSubmitRating.disabled = false;
+            // Pinta as estrelas de amarelo até a nota selecionada
+            stars.forEach((s, index) => {
+                if(index < notaSelecionada) {
+                    s.classList.remove('text-slate-300'); s.classList.add('text-yellow-400');
+                } else {
+                    s.classList.remove('text-yellow-400'); s.classList.add('text-slate-300');
+                }
+            });
+        };
+    });
+
+    function abrirModalAvaliacao(orderId, orderData) {
+        document.getElementById('ratingWorkerName').innerText = orderData.workerName;
+        modalRating.classList.remove('hidden');
+        modalRating.classList.add('flex');
+        
+        // Reseta as estrelas sempre que abre
+        notaSelecionada = 0;
+        btnSubmitRating.disabled = true;
+        stars.forEach(s => { s.classList.remove('text-yellow-400'); s.classList.add('text-slate-300'); });
+
+        btnSubmitRating.onclick = async () => {
+            btnSubmitRating.innerText = "Processando...";
+            try {
+                const valorNum = parseFloat(orderData.valor);
+                
+                // 1. Transfere o dinheiro para o trabalhador usando increment
+                await updateDoc(doc(db, "users", orderData.worker), { saldo: increment(valorNum) });
+                
+                // 2. Salva a avaliação e finaliza o pedido de vez
+                await updateDoc(doc(db, "servicos", orderId), { 
+                    status: "concluido", 
+                    nota: notaSelecionada 
+                });
+
+                modalRating.classList.add('hidden');
+                modalRating.classList.remove('flex');
+                alert("Serviço finalizado com sucesso! O dinheiro foi transferido.");
+            } catch(e) {
+                console.error(e); 
+                alert("Erro ao finalizar.");
+            } finally {
+                btnSubmitRating.innerText = "Avaliar e Fechar";
+            }
+        };
+    }
+
+    // ==========================================
+    // LÓGICA DO NOVO PEDIDO (COBRANÇA)
+    // ==========================================
     const modalOrder = document.getElementById('modalNewOrder');
 
     document.getElementById('btnAddOrder').onclick = () => {
@@ -123,7 +185,6 @@ export function initMap() {
         if (map) map.dragging.enable(); 
     };
 
-    // MÁGICA DA OPÇÃO B (COBRAR NA HORA DO PEDIDO)
     document.getElementById('btnSubmitOrder').onclick = async () => {
         const title = document.getElementById('orderTitle').value.trim();
         const desc = document.getElementById('orderDesc').value.trim();
@@ -137,7 +198,6 @@ export function initMap() {
         const prof = await getUserProfile();
         if(!prof || !prof.cpf) return alert("⚠️ Valide seu CPF no Perfil antes de pedir ajuda.");
 
-        // CHECA SE TEM SALDO
         if (!prof.saldo || prof.saldo < valorNum) {
             return alert(`❌ Saldo Insuficiente. Você tem R$ ${prof.saldo || 0}, mas o serviço custa R$ ${valorNum}.`);
         }
@@ -146,10 +206,9 @@ export function initMap() {
         btn.innerText = "Descontando da Carteira..."; btn.disabled = true;
 
         try {
-            // 1. DESCONTA DO SALDO
+            // DESCONTA DA CARTEIRA PRIMEIRO
             await updateDoc(doc(db, "users", auth.currentUser.uid), { saldo: increment(-valorNum) });
 
-            // 2. CRIA O PEDIDO
             const center = map.getCenter();
             await addDoc(collection(db, "servicos"), {
                 titulo: title,
@@ -178,10 +237,13 @@ export function initMap() {
         }
     };
 
+    // ==========================================
+    // LÓGICA DO GPS
+    // ==========================================
     document.getElementById('btnGps').onclick = () => {
         navigator.geolocation.getCurrentPosition(
             p => map.flyTo([p.coords.latitude, p.coords.longitude], 17),
-            err => alert("Ative a localização do navegador.")
+            err => alert("Ative a localização do navegador para usar o GPS.")
         );
     };
 }
