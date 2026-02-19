@@ -1,23 +1,27 @@
-/* FORÇA O MAPA A FICAR NO FUNDO ABSOLUTO */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 body, html {
     margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden;
+    background-color: #f8f9fa;
 }
-
 #map {
     position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1;
 }
-
-/* ESCONDE A LOGO DO LEAFLET E ZOOM */
 .leaflet-control-attribution, .leaflet-control-zoom { display: none !important; }
 
-/* PERSONALIZAÇÃO DO TEMA DO IONIC (As cores da sua marca) */
-:root {
-    --ion-color-primary: #000000; /* Preto Estilo Uber */
-    --ion-color-primary-rgb: 0,0,0;
-    --ion-color-primary-contrast: #ffffff;
-    --ion-color-primary-contrast-rgb: 255,255,255;
-    --ion-color-primary-shade: #000000;
-    --ion-color-primary-tint: #1a1a1a;
-    
-    --ion-color-secondary: #0052cc; /* Azul Vizin */
+/* TIRA A CARA DE SITE NO CELULAR */
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+input, textarea {
+  -webkit-user-select: auto;
+  user-select: auto;
+}
+::-webkit-scrollbar {
+  display: none; width: 0; background: transparent;
 }
