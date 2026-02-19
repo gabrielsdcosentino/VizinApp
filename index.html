@@ -45,6 +45,35 @@
                 <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6"></div>
                 <div id="sheetContent"></div>
             </div>
+            <div id="modalNewOrder" class="fixed inset-0 bg-black/40 z-[4000] hidden flex-col justify-end backdrop-blur-sm transition-opacity">
+            <div class="bg-white w-full rounded-t-[32px] p-6 shadow-2xl">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-black text-slate-800">Pedir Ajuda</h2>
+                    <button id="btnCloseOrderModal" class="text-slate-400 font-bold text-3xl px-2 active:scale-90 transition-all">&times;</button>
+                </div>
+                
+                <input id="orderTitle" type="text" placeholder="O que você precisa? (ex: Comprar Pão)" class="w-full p-4 mb-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 outline-none font-medium">
+                
+                <textarea id="orderDesc" rows="2" placeholder="Detalhes (onde, como, etc)" class="w-full p-4 mb-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 outline-none font-medium"></textarea>
+                
+                <div class="flex items-center mb-6">
+                    <span class="text-xl font-black text-blue-600 mr-3">R$</span>
+                    <input id="orderValue" type="number" placeholder="Valor pago (ex: 5.00)" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 outline-none font-medium">
+                </div>
+                
+                <button id="btnSubmitOrder" class="w-full py-4 bg-blue-600 text-white rounded-xl font-bold text-lg hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-200">Publicar Pedido</button>
+            </div>
+        </div>
+    </div> ```
+
+### Passo 2: Dar Vida ao Formulário no `map.js`
+Agora vamos ao arquivo `src/map.js`. Precisamos importar as funções de salvar dados no banco (`addDoc`, `serverTimestamp`) e substituir a lógica do botão `+`.
+
+Abra o `src/map.js` e faça as seguintes alterações:
+
+**A.** Na linha 3, atualize os imports do Firebase para incluir `addDoc` e `serverTimestamp`:
+```javascript
+import { collection, doc, updateDoc, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore";
         </div>
     </div>
 
