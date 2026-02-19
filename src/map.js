@@ -1,9 +1,11 @@
 import L from 'leaflet';
 import { db, auth } from './firebaseConfig.js';
-import { collection, doc, updateDoc, onSnapshot, addDoc, serverTimestamp, increment, getDoc } from "firebase/firestore";
+// ATENÇÃO AOS IMPORTS NOVOS AQUI (query, orderBy):
+import { collection, doc, updateDoc, onSnapshot, addDoc, serverTimestamp, increment, getDoc, query, orderBy } from "firebase/firestore";
 import { getUserProfile } from './profile.js'; 
 
 let map, markers = {};
+let unsubscribeChat = null; // Fica de olho nas novas mensagens
 
 export function initMap() {
     if (map) { setTimeout(() => map.invalidateSize(), 100); return; }
@@ -17,7 +19,6 @@ export function initMap() {
             const data = d.data();
             const id = d.id;
 
-            // SOME COM PINOS CANCELADOS E CONCLUÍDOS
             if (data.status === "concluido" || data.status === "cancelado") {
                 if (markers[id]) { map.removeLayer(markers[id]); delete markers[id]; }
                 return;
@@ -49,8 +50,7 @@ export function initMap() {
 
     function showDetails(id, data) {
         const isMine = data.autor === auth.currentUser.email;
-        const isWorker = data.worker === auth.currentUser.uid; // Verifica se sou eu quem está executando
-        const phoneToCall = isMine ? data.workerPhone : data.creatorPhone;
+        const isWorker = data.worker === auth.currentUser.uid;
         const otherPersonName = isMine ? data.workerName : data.creatorName;
         const roleLabel = isMine ? "Fazendo:" : "Pediu:";
 
@@ -76,22 +76,32 @@ export function initMap() {
                     <div class="p-4 bg-green-50 rounded-2xl border border-green-100 text-center">
                         <p class="text-green-800 font-bold mb-1">Serviço em Andamento</p>
                         ${otherPersonName ? `<p class="text-sm text-green-700 mb-3">👤 ${roleLabel} <b>${otherPersonName}</b></p>` : ''}
-                        ${phoneToCall ? `<a href="https://wa.me/55${phoneToCall}" target="_blank" class="block w-full bg-green-600 text-white font-bold py-3 rounded-xl mt-2 active:scale-95">Chamar no WhatsApp</a>` : ''}
+                        
+                        <button id="btnOpenChat" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl mt-2 active:scale-95 transition-all shadow-md flex items-center justify-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M4.804 21.644A6.707 6.707 0 006 21.75a6.721 6.721 0 003.583-1.029c.774.182 1.584.279 2.417.279 5.322 0 9.75-3.97 9.75-9 0-5.03-4.428-9-9.75-9s-9.75 3.97-9.75 9c0 2.409 1.025 4.587 2.674 6.192.232.226.277.428.254.543a3.73 3.73 0 01-.814 1.686.75.75 0 00.44 1.223zM8.25 10.875a1.125 1.125 0 100 2.25 1.125 1.125 0 000-2.25zM10.875 12a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0zm4.875-1.125a1.125 1.125 0 100 2.25 1.125 1.125 0 000-2.25z" clip-rule="evenodd" /></svg>
+                            Abrir Chat
+                        </button>
                     </div>
                     
                     ${isMine ? `<button id="btnAction" class="w-full bg-slate-900 text-white p-4 rounded-2xl font-bold mt-2 active:scale-95 transition-all">FINALIZAR (Liberar Pagamento)</button>` : ''}
                     
-                    ${isWorker ? `<button id="btnWorkerCancel" class="w-full p-3 bg-red-50 text-red-600 rounded-xl font-bold active:scale-95 transition-all mt-2 border border-red-100">Tive um imprevisto (Cancelar e Devolver R$)</button>` : ''}
+                    ${isWorker ? `<button id="btnWorkerCancel" class="w-full p-3 bg-red-50 text-red-600 rounded-xl font-bold active:scale-95 transition-all mt-2 border border-red-100">Tive um imprevisto (Cancelar)</button>` : ''}
                 ` : ''}
                 
-                <button id="btnFecharDetalhes" class="w-full p-2 text-slate-400 font-medium">Fechar</button>
+                <button id="btnFecharDetalhes" class="w-full p-2 text-slate-400 font-medium">Fechar Painel</button>
             </div>
         `;
 
         sheet.classList.remove('translate-y-full');
         document.getElementById('btnFecharDetalhes').onclick = () => { sheet.classList.add('translate-y-full'); };
 
-        // CANCELAMENTO DO SOLICITANTE (Só na fase aberta)
+        // ABRE A TELA DO CHAT
+        const btnOpenChat = document.getElementById('btnOpenChat');
+        if (btnOpenChat) {
+            btnOpenChat.onclick = () => abrirChat(id, data.titulo);
+        }
+
+        // CRIADOR CANCELA (Só se estiver aberto, reembolsa)
         const btnCancel = document.getElementById('btnCancelOrder');
         if (btnCancel) {
             btnCancel.onclick = async () => {
@@ -104,17 +114,20 @@ export function initMap() {
             };
         }
 
-        // DESISTÊNCIA DO PRESTADOR DE SERVIÇO (Fase Aceito)
+        // CORREÇÃO DO CANCELAMENTO DO TRABALHADOR (Volta pro Mapa!)
         const btnWorkerCancel = document.getElementById('btnWorkerCancel');
         if (btnWorkerCancel) {
             btnWorkerCancel.onclick = async () => {
-                if(!data.creatorId) return alert("Erro: Pedido antigo de teste não pode ser estornado.");
-                
-                if(confirm("Deseja cancelar o serviço? O dinheiro será devolvido automaticamente ao seu vizinho.")){
-                    btnWorkerCancel.innerText = "Devolvendo...";
-                    // Devolve o dinheiro para o ID de quem criou o pedido
-                    await updateDoc(doc(db, "users", data.creatorId), { saldo: increment(parseFloat(data.valor)) });
-                    await updateDoc(doc(db, "servicos", id), { status: "cancelado" });
+                if(confirm("Deseja cancelar? O pedido voltará para o mapa para outro vizinho aceitar.")){
+                    btnWorkerCancel.innerText = "Cancelando...";
+                    // MUDANÇA: O dinheiro não é estornado pro criador agora, ele continua retido.
+                    // O status muda para aberto e a gente limpa os dados do trabalhador atual.
+                    await updateDoc(doc(db, "servicos", id), { 
+                        status: "aberto",
+                        worker: "",
+                        workerName: "",
+                        workerPhone: ""
+                    });
                     sheet.classList.add('translate-y-full');
                 }
             };
@@ -142,7 +155,72 @@ export function initMap() {
         }
     }
 
+    // ==========================================
+    // LÓGICA DO CHAT INTERNO (EM TEMPO REAL)
+    // ==========================================
+    function abrirChat(orderId, orderTitle) {
+        const screenChat = document.getElementById('screen-chat');
+        document.getElementById('chatTitle').innerText = orderTitle;
+        screenChat.classList.remove('hidden');
+        screenChat.classList.add('flex');
+
+        const chatMessages = document.getElementById('chatMessages');
+        chatMessages.innerHTML = '<p class="text-center text-slate-400 mt-4">Carregando segurança Vizin...</p>';
+
+        // Busca mensagens antigas e fica ouvindo as novas em tempo real
+        const q = query(collection(db, "servicos", orderId, "mensagens"), orderBy("timestamp", "asc"));
+
+        if(unsubscribeChat) unsubscribeChat();
+        unsubscribeChat = onSnapshot(q, (snap) => {
+            chatMessages.innerHTML = '';
+            if(snap.empty) {
+                chatMessages.innerHTML = '<p class="text-center text-slate-400 mt-4">Nenhuma mensagem ainda. Combine os detalhes por aqui!</p>';
+            }
+            snap.forEach(d => {
+                const msg = d.data();
+                const isMe = msg.senderId === auth.currentUser.uid;
+                const align = isMe ? 'self-end bg-blue-600 text-white rounded-tr-none' : 'self-start bg-white border border-slate-200 text-slate-800 rounded-tl-none';
+                
+                chatMessages.innerHTML += `
+                    <div class="max-w-[80%] p-3 rounded-2xl ${align} shadow-sm text-sm">
+                        ${msg.text}
+                    </div>
+                `;
+            });
+            // Rola pro final sempre que chega mensagem
+            chatMessages.scrollTo(0, chatMessages.scrollHeight);
+        });
+
+        // Enviar nova mensagem
+        const btnSend = document.getElementById('btnSendChat');
+        const input = document.getElementById('chatInput');
+
+        // Remove listener antigo para não duplicar envios
+        btnSend.replaceWith(btnSend.cloneNode(true));
+        const newBtnSend = document.getElementById('btnSendChat');
+
+        newBtnSend.onclick = async () => {
+            const text = input.value.trim();
+            if(!text) return;
+            input.value = ''; // Limpa a caixa na hora
+            await addDoc(collection(db, "servicos", orderId, "mensagens"), {
+                text: text,
+                senderId: auth.currentUser.uid,
+                timestamp: serverTimestamp()
+            });
+        };
+
+        // Fechar chat
+        document.getElementById('btnCloseChat').onclick = () => {
+            screenChat.classList.add('hidden');
+            screenChat.classList.remove('flex');
+            if(unsubscribeChat) unsubscribeChat(); // Para de gastar internet
+        };
+    }
+
+    // ==========================================
     // AVALIAÇÃO E TRANSFERÊNCIA BANCÁRIA
+    // ==========================================
     let notaSelecionada = 0;
     const modalRating = document.getElementById('modalRating');
     const stars = document.querySelectorAll('.star-btn');
@@ -205,7 +283,9 @@ export function initMap() {
         };
     }
 
-    // NOVO PEDIDO
+    // ==========================================
+    // NOVO PEDIDO (COBRANÇA)
+    // ==========================================
     const modalOrder = document.getElementById('modalNewOrder');
 
     document.getElementById('btnAddOrder').onclick = () => {
@@ -249,7 +329,7 @@ export function initMap() {
                 lng: center.lng,
                 status: "aberto",
                 autor: auth.currentUser.email,
-                creatorId: auth.currentUser.uid, // <-- MUDANÇA VITAL PARA O ESTORNO FUNCIONAR
+                creatorId: auth.currentUser.uid, 
                 creatorPhone: prof.phone,
                 creatorName: prof.name,
                 criadoEm: serverTimestamp()
