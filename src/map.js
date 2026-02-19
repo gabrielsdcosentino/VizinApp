@@ -2,7 +2,7 @@ import L from 'leaflet';
 import { db, auth } from './firebaseConfig.js';
 import { collection, doc, updateDoc, onSnapshot, addDoc, serverTimestamp, increment, getDoc, query, orderBy } from "firebase/firestore";
 import { getUserProfile } from './profile.js'; 
-import { Geolocation } from '@capacitor/geolocation'; // PLUGIN NATIVO DO GPS
+import { Geolocation } from '@capacitor/geolocation'; 
 
 let map, markers = {};
 let unsubscribeChat = null;
@@ -10,7 +10,6 @@ let unsubscribeChat = null;
 export function initMap() {
     if (map) { setTimeout(() => map.invalidateSize(), 100); return; }
 
-    // Mapa com visual "Light" (Padrão Uber)
     map = L.map('map', { zoomControl: false }).setView([-23.1791, -45.8872], 14);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
     setTimeout(() => map.invalidateSize(), 100);
@@ -26,7 +25,7 @@ export function initMap() {
             }
 
             const isAceito = data.status === "aceito";
-            const colorFill = isAceito ? "#22c55e" : "#000000"; // Verde ou Preto(Uber)
+            const colorFill = isAceito ? "#22c55e" : "#000000"; 
             const colorStroke = isAceito ? "#166534" : "#000000"; 
             
             const svgIcon = `
@@ -114,7 +113,7 @@ export function initMap() {
         const btnWorkerCancel = document.getElementById('btnWorkerCancel');
         if (btnWorkerCancel) {
             btnWorkerCancel.onclick = async () => {
-                if(confirm("Deseja cancelar? O pedido voltará para o mapa para outro vizinho aceitar.")){
+                if(confirm("Deseja cancelar? O pedido voltará para o mapa.")){
                     btnWorkerCancel.innerText = "Cancelando...";
                     await updateDoc(doc(db, "servicos", id), { 
                         status: "aberto", worker: "", workerName: "", workerPhone: ""
@@ -132,7 +131,7 @@ export function initMap() {
                 
                 if (type === "accept") {
                     const prof = await getUserProfile();
-                    if(!prof || !prof.cpf) return alert("Valide sua identidade no perfil antes de aceitar!");
+                    if(!prof || !prof.cpf) return alert("Valide sua identidade no perfil!");
                     await updateDoc(ref, { status: "aceito", worker: auth.currentUser.uid, workerName: prof.name, workerPhone: prof.phone });
                     sheet.classList.add('translate-y-full');
                 } else {
@@ -145,7 +144,6 @@ export function initMap() {
         }
     }
 
-    // CHAT
     function abrirChat(orderId, orderTitle) {
         const screenChat = document.getElementById('screen-chat');
         document.getElementById('chatTitle').innerText = orderTitle;
@@ -189,7 +187,6 @@ export function initMap() {
         };
     }
 
-    // AVALIAÇÃO
     let notaSelecionada = 0;
     const modalRating = document.getElementById('modalRating');
     const stars = document.querySelectorAll('.star-btn');
@@ -229,13 +226,7 @@ export function initMap() {
                 
                 const novaMedia = ((currentStars * totalAvaliacoes) + notaSelecionada) / (totalAvaliacoes + 1);
 
-                // ATUALIZA O PERFIL DE QUEM TRABALHOU (Recebe o dinheiro e as estrelas)
-                await updateDoc(workerRef, { 
-                    saldo: increment(valorNum),
-                    estrelas: novaMedia,
-                    avaliacoes: increment(1)
-                });
-                
+                await updateDoc(workerRef, { saldo: increment(valorNum), estrelas: novaMedia, avaliacoes: increment(1) });
                 await updateDoc(doc(db, "servicos", orderId), { status: "concluido", nota: notaSelecionada });
 
                 modalRating.classList.add('hidden'); modalRating.classList.remove('flex');
@@ -248,7 +239,6 @@ export function initMap() {
         };
     }
 
-    // NOVO PEDIDO
     const modalOrder = document.getElementById('modalNewOrder');
     document.getElementById('btnAddOrder').onclick = () => { modalOrder.classList.remove('hidden'); modalOrder.classList.add('flex'); if(map) map.dragging.disable(); };
     document.getElementById('btnCloseOrderModal').onclick = () => { modalOrder.classList.add('hidden'); modalOrder.classList.remove('flex'); if(map) map.dragging.enable(); };
@@ -288,13 +278,27 @@ export function initMap() {
         }
     };
 
-    // NAVEGAÇÃO GPS NATIVA (CAPACITOR)
+    // MUDANÇA AQUI: PEDE PERMISSÃO OFICIAL AO ANDROID
     document.getElementById('btnGps').onclick = async () => {
         try {
-            const coordinates = await Geolocation.getCurrentPosition();
+            const btn = document.getElementById('btnGps');
+            btn.style.opacity = '0.5'; // Deixa o botão apagadinho enquanto pensa
+            
+            // 1. Pede a permissão de GPS para o usuário
+            const permission = await Geolocation.requestPermissions();
+            if (permission.location !== 'granted') {
+                btn.style.opacity = '1';
+                return alert("Para o GPS funcionar, você precisa tocar em 'Permitir durante o uso do app'.");
+            }
+
+            // 2. Pega a localização
+            const coordinates = await Geolocation.getCurrentPosition({ enableHighAccuracy: true });
             map.flyTo([coordinates.coords.latitude, coordinates.coords.longitude], 17);
+            
+            btn.style.opacity = '1';
         } catch (error) {
-            alert("Ative a localização do seu celular para usar o GPS.");
+            document.getElementById('btnGps').style.opacity = '1';
+            alert("Ocorreu um erro no GPS. Verifique se a localização está ativada na barra de cima do seu celular.");
         }
     };
 }

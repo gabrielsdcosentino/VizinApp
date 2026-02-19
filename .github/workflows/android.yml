@@ -28,11 +28,15 @@ jobs:
           distribution: 'zulu'
           java-version: '21'
 
-      - name: 5. Sincronizar Capacitor (O Motor do App)
+      - name: 5. Sincronizar Capacitor
         run: |
           npm install @capacitor/android
           npx cap add android || true
           npx cap sync android
+
+      - name: 5.5 Injetar Licença de GPS no Android
+        run: |
+          sed -i 's/<application/<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" \/>\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" \/>\n    <application/g' android/app/src/main/AndroidManifest.xml
 
       - name: 6. Compilar o APK
         run: |
