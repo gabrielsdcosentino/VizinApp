@@ -1,59 +1,54 @@
-import { auth } from './firebaseConfig';
+import { auth } from './firebaseConfig.js';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
-import { initMap } from './map.js'; // Importa a função do mapa
 
-// Desenha a tela de Login (HTML)
-document.querySelector('#app').innerHTML = `
-  <div style="padding: 20px; font-family: sans-serif; max-width: 400px; margin: 0 auto; display: flex; flex-direction: column; justify-content: center; height: 100vh;">
-    <h1 style="text-align: center; color: #333;">VizinApp 🏠</h1>
-    <p style="text-align: center; color: #666; margin-bottom: 30px;">Conecte-se com sua vizinhança</p>
-    
-    <input type="email" id="email" placeholder="Seu Email" style="padding: 15px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px;">
-    <input type="password" id="password" placeholder="Sua Senha" style="padding: 15px; margin-bottom: 20px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px;">
-    
-    <button id="btnLogin" style="padding: 15px; background: #2196F3; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 16px; margin-bottom: 10px;">ENTRAR</button>
-    <button id="btnRegister" style="padding: 15px; background: #4CAF50; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 16px;">CRIAR CONTA NOVA</button>
-    
-    <p id="status" style="margin-top: 20px; text-align: center; font-weight: bold; color: gray;"></p>
-  </div>
-`;
+export function setupLogin() {
+    const btnLogin = document.getElementById('btnLogin');
+    const btnRegister = document.getElementById('btnRegister');
+    const emailInput = document.getElementById('authEmail');
+    const passInput = document.getElementById('authPassword');
+    const statusMsg = document.getElementById('authStatus');
 
-// Lógica do Botão ENTRAR
-document.getElementById('btnLogin').addEventListener('click', async () => {
-    const email = document.getElementById('email').value;
-    const pass = document.getElementById('password').value;
-    const status = document.getElementById('status');
-    
-    if(!email || !pass) { status.innerText = "⚠️ Preencha email e senha!"; return; }
+    // Remove listeners antigos para evitar duplicação caso deslogue e logue novamente
+    btnLogin.replaceWith(btnLogin.cloneNode(true));
+    btnRegister.replaceWith(btnRegister.cloneNode(true));
 
-    status.innerText = "⏳ Entrando...";
-    
-    try {
-        await signInWithEmailAndPassword(auth, email, pass);
-        // SUCESSO! Chama o mapa
-        status.innerText = "✅ Sucesso!";
-        initMap(); 
-    } catch (error) {
-        status.innerText = "❌ Erro: " + error.message;
-    }
-});
+    document.getElementById('btnLogin').addEventListener('click', async () => {
+        const email = emailInput.value.trim();
+        const pass = passInput.value.trim();
+        
+        if(!email || !pass) { statusMsg.innerText = "Preencha e-mail e senha."; return; }
 
-// Lógica do Botão CRIAR CONTA
-document.getElementById('btnRegister').addEventListener('click', async () => {
-    const email = document.getElementById('email').value;
-    const pass = document.getElementById('password').value;
-    const status = document.getElementById('status');
+        statusMsg.innerText = "Entrando...";
+        statusMsg.classList.replace('text-red-500', 'text-slate-500');
+        
+        try {
+            await signInWithEmailAndPassword(auth, email, pass);
+            // Se der certo, o main.js detecta a mudança e muda a tela automaticamente
+            statusMsg.innerText = ""; 
+        } catch (error) {
+            statusMsg.classList.replace('text-slate-500', 'text-red-500');
+            statusMsg.innerText = "Erro: Verifique seus dados.";
+            console.error(error);
+        }
+    });
 
-    if(!email || !pass) { status.innerText = "⚠️ Preencha email e senha!"; return; }
+    document.getElementById('btnRegister').addEventListener('click', async () => {
+        const email = emailInput.value.trim();
+        const pass = passInput.value.trim();
 
-    status.innerText = "⏳ Criando conta...";
-    
-    try {
-        await createUserWithEmailAndPassword(auth, email, pass);
-        // SUCESSO! Chama o mapa
-        status.innerText = "🎉 Conta criada!";
-        initMap();
-    } catch (error) {
-        status.innerText = "❌ Erro: " + error.message;
-    }
-});
+        if(!email || !pass) { statusMsg.innerText = "Preencha e-mail e senha para criar."; return; }
+        if(pass.length < 6) { statusMsg.innerText = "A senha deve ter pelo menos 6 caracteres."; return; }
+
+        statusMsg.innerText = "Criando conta...";
+        statusMsg.classList.replace('text-red-500', 'text-slate-500');
+        
+        try {
+            await createUserWithEmailAndPassword(auth, email, pass);
+            statusMsg.innerText = "";
+        } catch (error) {
+            statusMsg.classList.replace('text-slate-500', 'text-red-500');
+            statusMsg.innerText = "Erro ao criar conta. E-mail já existe?";
+            console.error(error);
+        }
+    });
+}
