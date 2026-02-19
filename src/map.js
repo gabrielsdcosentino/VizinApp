@@ -1,6 +1,6 @@
 import L from 'leaflet';
 import { db, auth } from './firebaseConfig.js';
-import { collection, doc, updateDoc, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, doc, updateDoc, onSnapshot, addDoc, serverTimestamp, increment } from "firebase/firestore";
 import { getUserProfile } from './profile.js'; 
 
 let map, markers = {};
@@ -22,12 +22,24 @@ export function initMap() {
                 return;
             }
 
-            const color = data.status === "aceito" ? "#22c55e" : "#2563eb";
-            const iconHtml = `<div style="background:${color}; width:15px; height:15px; border-radius:50%; border:3px solid white; box-shadow:0 2px 5px rgba(0,0,0,0.3)"></div>`;
+            // PINOS PROFISSIONAIS (SVG Estilo Google Maps)
+            const isAceito = data.status === "aceito";
+            const colorFill = isAceito ? "#22c55e" : "#2563eb"; 
+            const colorStroke = isAceito ? "#166534" : "#1e40af"; 
+            
+            const svgIcon = `
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${colorFill}" stroke="${colorStroke}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                    <circle cx="12" cy="10" r="3" fill="white"></circle>
+                </svg>
+            `;
 
             if (!markers[id]) {
                 markers[id] = L.marker([data.lat, data.lng], {
-                    icon: L.divIcon({ className: 'leaflet-vizin-icon', html: iconHtml })
+                    icon: L.divIcon({ 
+                        className: 'bg-transparent border-none',
+                        html: `<div style="width: 36px; height: 36px; transform: translate(-50%, -100%); filter: drop-shadow(0px 4px 4px rgba(0,0,0,0.4));">${svgIcon}</div>`,
+                    })
                 }).addTo(map);
             }
 
@@ -37,11 +49,9 @@ export function initMap() {
 
     function showDetails(id, data) {
         const isMine = data.autor === auth.currentUser.email;
-        
-        // Lógica de Segurança e Transparência
         const phoneToCall = isMine ? data.workerPhone : data.creatorPhone;
         const otherPersonName = isMine ? data.workerName : data.creatorName;
-        const roleLabel = isMine ? "Quem vai fazer" : "Quem pediu";
+        const roleLabel = isMine ? "Fazendo:" : "Pediu:";
 
         const sheet = document.getElementById('bottomSheet');
         const content = document.getElementById('sheetContent');
@@ -49,7 +59,10 @@ export function initMap() {
         content.innerHTML = `
             <div class="flex justify-between items-start mb-4">
                 <h2 class="text-2xl font-black text-slate-800">${data.titulo}</h2>
-                <span class="text-xl font-bold text-blue-600">R$ ${data.valor}</span>
+                <div class="text-right">
+                    <span class="text-xl font-bold text-blue-600 block">R$ ${data.valor}</span>
+                    <span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full uppercase">Pago no App</span>
+                </div>
             </div>
             <p class="text-slate-500 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100">${data.descricao || 'Sem instruções.'}</p>
             
@@ -59,14 +72,11 @@ export function initMap() {
                 ${data.status === 'aceito' ? `
                     <div class="p-4 bg-green-50 rounded-2xl border border-green-100 text-center">
                         <p class="text-green-800 font-bold mb-1">Serviço em Andamento</p>
-                        ${otherPersonName ? `<p class="text-sm text-green-700 mb-3">👤 ${roleLabel}: <b>${otherPersonName}</b></p>` : ''}
+                        ${otherPersonName ? `<p class="text-sm text-green-700 mb-3">👤 ${roleLabel} <b>${otherPersonName}</b></p>` : ''}
                         
-                        ${phoneToCall 
-                            ? `<a href="https://wa.me/55${phoneToCall}" target="_blank" class="block w-full bg-green-600 text-white font-bold py-3 rounded-xl mt-2 active:scale-95">Chamar no WhatsApp</a>` 
-                            : `<p class="text-sm text-red-500 font-bold">Número indisponível (Pedido antigo)</p>`
-                        }
+                        ${phoneToCall ? `<a href="https://wa.me/55${phoneToCall}" target="_blank" class="block w-full bg-green-600 text-white font-bold py-3 rounded-xl mt-2 active:scale-95">Chamar no WhatsApp</a>` : ''}
                     </div>
-                    ${isMine ? `<button id="btnAction" class="w-full bg-slate-900 text-white p-4 rounded-2xl font-bold mt-2 active:scale-95 transition-all">FINALIZAR E PAGAR</button>` : ''}
+                    ${isMine ? `<button id="btnAction" class="w-full bg-slate-900 text-white p-4 rounded-2xl font-bold mt-2 active:scale-95 transition-all">FINALIZAR (Liberar Pagamento)</button>` : ''}
                 ` : ''}
                 
                 <button id="btnFecharDetalhes" class="w-full p-2 text-slate-400 font-medium">Fechar</button>
@@ -84,11 +94,17 @@ export function initMap() {
                 
                 if (type === "accept") {
                     const prof = await getUserProfile();
-                    if(!prof || !prof.phone) return alert("Preencha o seu perfil e WhatsApp antes de aceitar um serviço!");
-                    // SALVA QUEM ACEITOU PARA O HISTÓRICO E SEGURANÇA
+                    if(!prof || !prof.cpf) return alert("Valide sua identidade no perfil antes de aceitar!");
                     await updateDoc(ref, { status: "aceito", worker: auth.currentUser.uid, workerName: prof.name, workerPhone: prof.phone });
                 } else {
-                    await updateDoc(ref, { status: "concluido" });
+                    // MÁGICA DA OPÇÃO B (LIBERAR PAGAMENTO PARA O TRABALHADOR)
+                    if(confirm("Confirma que o serviço foi concluído? O dinheiro será transferido para quem ajudou.")){
+                        const valorNum = parseFloat(data.valor);
+                        // 1. Paga o trabalhador
+                        await updateDoc(doc(db, "users", data.worker), { saldo: increment(valorNum) });
+                        // 2. Finaliza a ordem
+                        await updateDoc(ref, { status: "concluido" });
+                    }
                 }
                 sheet.classList.add('translate-y-full');
             };
@@ -107,34 +123,44 @@ export function initMap() {
         if (map) map.dragging.enable(); 
     };
 
+    // MÁGICA DA OPÇÃO B (COBRAR NA HORA DO PEDIDO)
     document.getElementById('btnSubmitOrder').onclick = async () => {
         const title = document.getElementById('orderTitle').value.trim();
         const desc = document.getElementById('orderDesc').value.trim();
-        const value = document.getElementById('orderValue').value.trim();
+        const valueStr = document.getElementById('orderValue').value.trim();
         
-        if (!title || !value) return alert("Preencha o título e o valor!");
+        if (!title || !valueStr) return alert("Preencha título e valor!");
+        
+        const valorNum = parseFloat(valueStr);
+        if (valorNum <= 0) return alert("O valor deve ser maior que zero.");
 
         const prof = await getUserProfile();
-        if(!prof || !prof.phone) {
-            alert("⚠️ Segurança: Preencha seu Nome e WhatsApp no Perfil antes de pedir ajuda. O prestador precisa saber quem você é.");
-            return;
+        if(!prof || !prof.cpf) return alert("⚠️ Valide seu CPF no Perfil antes de pedir ajuda.");
+
+        // CHECA SE TEM SALDO
+        if (!prof.saldo || prof.saldo < valorNum) {
+            return alert(`❌ Saldo Insuficiente. Você tem R$ ${prof.saldo || 0}, mas o serviço custa R$ ${valorNum}.`);
         }
 
         const btn = document.getElementById('btnSubmitOrder');
-        btn.innerText = "Publicando..."; btn.disabled = true;
+        btn.innerText = "Descontando da Carteira..."; btn.disabled = true;
 
         try {
+            // 1. DESCONTA DO SALDO
+            await updateDoc(doc(db, "users", auth.currentUser.uid), { saldo: increment(-valorNum) });
+
+            // 2. CRIA O PEDIDO
             const center = map.getCenter();
             await addDoc(collection(db, "servicos"), {
                 titulo: title,
                 descricao: desc,
-                valor: value,
+                valor: valorNum,
                 lat: center.lat,
                 lng: center.lng,
                 status: "aberto",
                 autor: auth.currentUser.email,
                 creatorPhone: prof.phone,
-                creatorName: prof.name, // SALVANDO NOME DO CRIADOR PARA SEGURANÇA
+                creatorName: prof.name,
                 criadoEm: serverTimestamp()
             });
 
@@ -155,7 +181,7 @@ export function initMap() {
     document.getElementById('btnGps').onclick = () => {
         navigator.geolocation.getCurrentPosition(
             p => map.flyTo([p.coords.latitude, p.coords.longitude], 17),
-            err => alert("Ative a localização do navegador para usar o GPS.")
+            err => alert("Ative a localização do navegador.")
         );
     };
 }

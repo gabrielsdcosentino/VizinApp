@@ -33,9 +33,14 @@
 
         <main class="flex-1 relative h-full w-full">
             <div id="map" class="h-full w-full z-[1]"></div>
-            <div class="absolute bottom-8 right-6 z-[1000] flex flex-col gap-4">
-                <button id="btnGps" class="w-12 h-12 bg-white rounded-full shadow-lg flex justify-center items-center text-xl border border-slate-200 active:scale-90">🎯</button>
-                <button id="btnAddOrder" class="w-16 h-16 bg-blue-600 rounded-full shadow-xl flex justify-center items-center text-white text-3xl shadow-blue-300 active:scale-90">+</button>
+            
+            <div class="absolute bottom-8 right-4 z-[1000] flex flex-col gap-3">
+                <button id="btnGps" class="w-14 h-14 bg-white rounded-full shadow-md flex items-center justify-center text-slate-700 active:scale-90 transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-7 h-7"><path fill-rule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" /></svg>
+                </button>
+                <button id="btnAddOrder" class="w-14 h-14 bg-blue-600 rounded-2xl shadow-lg shadow-blue-500/50 flex items-center justify-center text-white active:scale-90 transition-all">
+                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8"><path fill-rule="evenodd" d="M12 3.75a.75.75 0 01.75.75v6.75h6.75a.75.75 0 010 1.5h-6.75v6.75a.75.75 0 01-1.5 0v-6.75H4.5a.75.75 0 010-1.5h6.75V4.5a.75.75 0 01.75-.75z" clip-rule="evenodd" /></svg>
+                </button>
             </div>
         </main>
 
@@ -69,27 +74,37 @@
                 <h2 class="text-3xl font-black text-slate-800">Meus Pedidos</h2>
                 <button id="btnCloseOrders" class="text-slate-500 font-bold px-2 hover:text-slate-800">Voltar</button>
             </div>
-            
             <div class="flex mb-6 gap-2 bg-slate-200 p-1 rounded-xl">
                 <button id="tabPedi" class="flex-1 py-2 bg-white text-blue-600 rounded-lg font-bold shadow-sm transition-all">Eu Pedi</button>
                 <button id="tabAceitei" class="flex-1 py-2 bg-transparent text-slate-500 rounded-lg font-bold transition-all">Eu Aceitei</button>
             </div>
-
-            <div id="ordersList" class="space-y-4">
-                </div>
+            <div id="ordersList" class="space-y-4"></div>
         </div>
     </div>
 
-    <div id="screen-profile" class="h-full w-full flex flex-col bg-slate-50 p-6 hidden absolute top-0 z-[5000]">
-        <div class="w-full max-w-sm mx-auto mt-10">
-            <h2 class="text-3xl font-black text-slate-800 mb-2">Meu Perfil</h2>
-            <p class="text-slate-500 mb-8">Dados reais garantem sua segurança e da comunidade.</p>
+    <div id="screen-profile" class="h-full w-full flex flex-col bg-slate-50 p-6 hidden absolute top-0 z-[5000] overflow-y-auto">
+        <div class="w-full max-w-sm mx-auto mt-4 pb-10">
+            
+            <div class="bg-blue-600 text-white p-6 rounded-3xl mb-6 shadow-xl shadow-blue-200 relative overflow-hidden">
+                <div class="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
+                <p class="text-blue-200 font-medium mb-1 text-sm uppercase tracking-wider">Saldo na Carteira Vizin</p>
+                <h3 class="text-4xl font-black mb-2">R$ <span id="profileSaldo">0,00</span></h3>
+                <p class="text-xs text-blue-100 opacity-90">Ao validar seu CPF, você ganha R$ 100 de teste.</p>
+            </div>
+
+            <h2 class="text-xl font-black text-slate-800 mb-4">Dados Pessoais</h2>
+            
             <label class="font-bold text-sm text-slate-600 ml-1">Nome Completo</label>
-            <input id="profileName" type="text" placeholder="Ex: João Silva" class="w-full p-4 mb-4 mt-1 rounded-xl outline-none focus:ring-2 ring-blue-500 border border-slate-200">
+            <input id="profileName" type="text" placeholder="Ex: João Silva" class="w-full p-4 mb-4 mt-1 bg-white rounded-xl outline-none border border-slate-200 focus:border-blue-500">
+            
+            <label class="font-bold text-sm text-slate-600 ml-1">CPF (Use 11111111111 para teste)</label>
+            <input id="profileCpf" type="text" maxlength="11" placeholder="00000000000" class="w-full p-4 mb-4 mt-1 bg-white rounded-xl outline-none border border-slate-200 focus:border-blue-500">
+            
             <label class="font-bold text-sm text-slate-600 ml-1">WhatsApp</label>
-            <input id="profilePhone" type="tel" placeholder="11999999999" class="w-full p-4 mb-8 mt-1 rounded-xl outline-none focus:ring-2 ring-blue-500 border border-slate-200">
-            <button id="btnSaveProfile" class="w-full py-4 bg-green-500 text-white rounded-xl font-bold shadow-lg shadow-green-200 active:scale-95 mb-3">Salvar Dados</button>
-            <button id="btnCloseProfile" class="w-full py-4 bg-transparent text-slate-500 font-bold">Voltar</button>
+            <input id="profilePhone" type="tel" placeholder="11999999999" class="w-full p-4 mb-8 mt-1 bg-white rounded-xl outline-none border border-slate-200 focus:border-blue-500">
+            
+            <button id="btnSaveProfile" class="w-full py-4 bg-slate-900 text-white rounded-xl font-bold shadow-lg shadow-slate-300 active:scale-95 mb-3 transition-all">Salvar e Verificar Conta</button>
+            <button id="btnCloseProfile" class="w-full py-4 bg-transparent text-slate-500 font-bold">Voltar pro Mapa</button>
             <button id="btnLogout" class="w-full py-4 mt-4 bg-red-50 text-red-600 rounded-xl font-bold">Sair da Conta</button>
         </div>
     </div>

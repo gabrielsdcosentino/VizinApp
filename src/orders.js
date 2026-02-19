@@ -11,14 +11,9 @@ export function setupOrders() {
 
     let currentTab = 'pedi'; 
 
-    btnOpenOrders.onclick = () => {
-        showScreen('screen-orders');
-        loadOrders();
-    };
-
+    btnOpenOrders.onclick = () => { showScreen('screen-orders'); loadOrders(); };
     btnCloseOrders.onclick = () => { showScreen('screen-app'); };
 
-    // Trocar de abas
     tabPedi.onclick = () => {
         currentTab = 'pedi';
         tabPedi.className = "flex-1 py-2 bg-white text-blue-600 rounded-lg font-bold shadow-sm transition-all";
@@ -34,21 +29,18 @@ export function setupOrders() {
     };
 
     async function loadOrders() {
-        ordersList.innerHTML = '<p class="text-center text-slate-500 mt-10">Buscando na base de dados segura...</p>';
+        ordersList.innerHTML = '<p class="text-center text-slate-500 mt-10">Buscando...</p>';
         const user = auth.currentUser;
         if(!user) return;
 
-        // Regra de segurança: Busca só o que é do usuário logado
         const campoBusca = currentTab === 'pedi' ? 'autor' : 'worker';
         const valorBusca = currentTab === 'pedi' ? user.email : user.uid;
 
         try {
             const q = query(collection(db, "servicos"), where(campoBusca, "==", valorBusca));
             const querySnapshot = await getDocs(q);
-            
             if(querySnapshot.empty) {
-                ordersList.innerHTML = '<p class="text-center text-slate-400 mt-10">Você não tem nenhum pedido aqui.</p>';
-                return;
+                ordersList.innerHTML = '<p class="text-center text-slate-400 mt-10">Nenhum pedido encontrado.</p>'; return;
             }
 
             let html = '';
@@ -62,19 +54,12 @@ export function setupOrders() {
                             <h3 class="font-bold text-lg text-slate-800">${d.titulo}</h3>
                             <span class="text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-wider ${corStatus}">${d.status}</span>
                         </div>
-                        <p class="text-sm text-slate-500 mb-4">Valor ofertado: <b class="text-blue-600">R$ ${d.valor}</b></p>
-                        
+                        <p class="text-sm text-slate-500 mb-4">Valor: <b class="text-blue-600">R$ ${d.valor}</b></p>
                         ${currentTab === 'pedi' && d.workerName ? `<div class="bg-slate-50 border border-slate-100 p-3 rounded-xl flex items-center justify-between"><span class="text-xs text-slate-500">Aceito por:</span><span class="font-bold text-slate-700">${d.workerName}</span></div>` : ''}
-                        
                         ${currentTab === 'aceitei' && d.creatorName ? `<div class="bg-slate-50 border border-slate-100 p-3 rounded-xl flex items-center justify-between"><span class="text-xs text-slate-500">Solicitante:</span><span class="font-bold text-slate-700">${d.creatorName}</span></div>` : ''}
-                    </div>
-                `;
+                    </div>`;
             });
             ordersList.innerHTML = html;
-
-        } catch(e) {
-            console.error(e);
-            ordersList.innerHTML = '<p class="text-center text-red-500 mt-10">Erro ao carregar dados.</p>';
-        }
+        } catch(e) { ordersList.innerHTML = '<p class="text-center text-red-500 mt-10">Erro ao carregar.</p>'; }
     }
 }
