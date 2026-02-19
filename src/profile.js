@@ -70,3 +70,11 @@ export function setupProfile() {
         // O main.js vai detectar o logout e voltar para a tela de login
     };
 }
+
+// Função exportada para o mapa poder ler os dados de quem aceitou o serviço
+export async function getUserProfile() {
+    try {
+        const docSnap = await getDoc(doc(db, "users", auth.currentUser.uid));
+        return docSnap.exists() ? docSnap.data() : null;
+    } catch (e) { return null; }
+}

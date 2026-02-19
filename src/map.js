@@ -1,16 +1,23 @@
 import L from 'leaflet';
-import { db, auth } from './firebaseConfig';
-import { collection, addDoc, doc, updateDoc, onSnapshot } from "firebase/firestore";
-import { openProfile, getUserProfile } from './profile.js';
+import { db, auth } from './firebaseConfig.js';
+import { collection, doc, updateDoc, onSnapshot } from "firebase/firestore";
+import { getUserProfile } from './profile.js'; 
 
 let map, markers = {};
 
 export function initMap() {
-    if (map) return; // Evita reinicializar o mapa e bugar
+    if (map) {
+        // Se o mapa já existe, apenas atualiza o tamanho para evitar a tela cinza
+        setTimeout(() => map.invalidateSize(), 100);
+        return; 
+    }
 
-    // Inicializa o Mapa em SJC
+    // Inicializa o Mapa
     map = L.map('map', { zoomControl: false }).setView([-23.1791, -45.8872], 14);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
+    
+    // Força a atualização do tamanho ao criar
+    setTimeout(() => map.invalidateSize(), 100);
 
     // Escuta o Banco de Dados
     onSnapshot(collection(db, "servicos"), (snap) => {
@@ -36,7 +43,7 @@ export function initMap() {
         });
     });
 
-    // Função de Mostrar Detalhes (Estilo Uber)
+    // Função de Mostrar Detalhes no Bottom Sheet
     function showDetails(id, data) {
         const isMine = data.autor === auth.currentUser.email;
         const sheet = document.getElementById('bottomSheet');
@@ -58,11 +65,16 @@ export function initMap() {
                     </div>
                     ${isMine ? `<button id="btnAction" class="w-full bg-slate-900 text-white p-4 rounded-2xl font-bold">FINALIZAR E PAGAR</button>` : ''}
                 ` : ''}
-                <button onclick="document.getElementById('bottomSheet').classList.add('translate-y-full')" class="w-full p-2 text-slate-400 font-medium">Fechar</button>
+                <button id="btnFecharDetalhes" class="w-full p-2 text-slate-400 font-medium">Fechar</button>
             </div>
         `;
 
         sheet.classList.remove('translate-y-full');
+
+        // Lógica de fechar a aba
+        document.getElementById('btnFecharDetalhes').onclick = () => {
+            sheet.classList.add('translate-y-full');
+        };
 
         const actionBtn = document.getElementById('btnAction');
         if (actionBtn) {
@@ -72,7 +84,7 @@ export function initMap() {
                 
                 if (type === "accept") {
                     const prof = await getUserProfile();
-                    if(!prof) return alert("Preencha o perfil!");
+                    if(!prof || !prof.phone) return alert("Preencha o seu perfil e WhatsApp antes de aceitar um serviço!");
                     await updateDoc(ref, { status: "aceito", worker: auth.currentUser.uid, workerName: prof.name, workerPhone: prof.phone });
                 } else {
                     await updateDoc(ref, { status: "concluido" });
@@ -82,18 +94,12 @@ export function initMap() {
         }
     }
 
-    // Configuração de Eventos Fixos (Não morrem mais)
-    document.getElementById('mainProfileBtn').onclick = () => openProfile(() => {
-        // Quando volta do perfil, não reinicia o app, só fecha o perfil
-        initMap(); 
-    });
-
-    document.getElementById('gpsBtn').onclick = () => {
+    // Configuração dos Botões Flutuantes (com as novas IDs do HTML)
+    document.getElementById('btnGps').onclick = () => {
         navigator.geolocation.getCurrentPosition(p => map.flyTo([p.coords.latitude, p.coords.longitude], 17));
     };
 
-    document.getElementById('addOrderBtn').onclick = () => {
-        // Aqui você chamaria o modal de novo pedido (pode ser outro Bottom Sheet)
+    document.getElementById('btnAddOrder').onclick = () => {
         alert("Abra o formulário de novo pedido");
     };
 }
