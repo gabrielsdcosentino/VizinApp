@@ -1,6 +1,6 @@
 import L from 'leaflet';
 import { db, auth } from './firebaseConfig.js';
-import { collection, doc, updateDoc, onSnapshot, addDoc, serverTimestamp, increment } from "firebase/firestore";
+import { collection, doc, updateDoc, onSnapshot, addDoc, serverTimestamp, increment, getDoc } from "firebase/firestore";
 import { getUserProfile } from './profile.js'; 
 
 let map, markers = {};
@@ -8,23 +8,21 @@ let map, markers = {};
 export function initMap() {
     if (map) { setTimeout(() => map.invalidateSize(), 100); return; }
 
-    // Inicializa o Mapa
     map = L.map('map', { zoomControl: false }).setView([-23.1791, -45.8872], 14);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
     setTimeout(() => map.invalidateSize(), 100);
 
-    // Escuta o Banco de Dados para os Pinos
     onSnapshot(collection(db, "servicos"), (snap) => {
         snap.forEach(d => {
             const data = d.data();
             const id = d.id;
 
-            if (data.status === "concluido") {
+            // SOME COM PINOS CANCELADOS E CONCLUÍDOS
+            if (data.status === "concluido" || data.status === "cancelado") {
                 if (markers[id]) { map.removeLayer(markers[id]); delete markers[id]; }
                 return;
             }
 
-            // PINOS PROFISSIONAIS (SVG Estilo Google Maps)
             const isAceito = data.status === "aceito";
             const colorFill = isAceito ? "#22c55e" : "#2563eb"; 
             const colorStroke = isAceito ? "#166534" : "#1e40af"; 
@@ -49,9 +47,9 @@ export function initMap() {
         });
     });
 
-    // Função de Mostrar Detalhes (Bottom Sheet)
     function showDetails(id, data) {
         const isMine = data.autor === auth.currentUser.email;
+        const isWorker = data.worker === auth.currentUser.uid; // Verifica se sou eu quem está executando
         const phoneToCall = isMine ? data.workerPhone : data.creatorPhone;
         const otherPersonName = isMine ? data.workerName : data.creatorName;
         const roleLabel = isMine ? "Fazendo:" : "Pediu:";
@@ -72,14 +70,18 @@ export function initMap() {
             <div class="space-y-3">
                 ${data.status === 'aberto' && !isMine ? `<button id="btnAction" class="w-full bg-blue-600 text-white p-4 rounded-2xl font-bold active:scale-95 transition-all">ACEITAR SERVIÇO</button>` : ''}
                 
+                ${data.status === 'aberto' && isMine ? `<button id="btnCancelOrder" class="w-full p-3 bg-red-50 text-red-600 rounded-xl font-bold active:scale-95 transition-all mt-2 border border-red-100">Cancelar e Reembolsar</button>` : ''}
+                
                 ${data.status === 'aceito' ? `
                     <div class="p-4 bg-green-50 rounded-2xl border border-green-100 text-center">
                         <p class="text-green-800 font-bold mb-1">Serviço em Andamento</p>
                         ${otherPersonName ? `<p class="text-sm text-green-700 mb-3">👤 ${roleLabel} <b>${otherPersonName}</b></p>` : ''}
-                        
                         ${phoneToCall ? `<a href="https://wa.me/55${phoneToCall}" target="_blank" class="block w-full bg-green-600 text-white font-bold py-3 rounded-xl mt-2 active:scale-95">Chamar no WhatsApp</a>` : ''}
                     </div>
+                    
                     ${isMine ? `<button id="btnAction" class="w-full bg-slate-900 text-white p-4 rounded-2xl font-bold mt-2 active:scale-95 transition-all">FINALIZAR (Liberar Pagamento)</button>` : ''}
+                    
+                    ${isWorker ? `<button id="btnWorkerCancel" class="w-full p-3 bg-red-50 text-red-600 rounded-xl font-bold active:scale-95 transition-all mt-2 border border-red-100">Tive um imprevisto (Cancelar e Devolver R$)</button>` : ''}
                 ` : ''}
                 
                 <button id="btnFecharDetalhes" class="w-full p-2 text-slate-400 font-medium">Fechar</button>
@@ -89,6 +91,36 @@ export function initMap() {
         sheet.classList.remove('translate-y-full');
         document.getElementById('btnFecharDetalhes').onclick = () => { sheet.classList.add('translate-y-full'); };
 
+        // CANCELAMENTO DO SOLICITANTE (Só na fase aberta)
+        const btnCancel = document.getElementById('btnCancelOrder');
+        if (btnCancel) {
+            btnCancel.onclick = async () => {
+                if(confirm("Deseja realmente cancelar? O valor retornará para sua carteira.")){
+                    btnCancel.innerText = "Cancelando...";
+                    await updateDoc(doc(db, "users", auth.currentUser.uid), { saldo: increment(parseFloat(data.valor)) });
+                    await updateDoc(doc(db, "servicos", id), { status: "cancelado" });
+                    sheet.classList.add('translate-y-full');
+                }
+            };
+        }
+
+        // DESISTÊNCIA DO PRESTADOR DE SERVIÇO (Fase Aceito)
+        const btnWorkerCancel = document.getElementById('btnWorkerCancel');
+        if (btnWorkerCancel) {
+            btnWorkerCancel.onclick = async () => {
+                if(!data.creatorId) return alert("Erro: Pedido antigo de teste não pode ser estornado.");
+                
+                if(confirm("Deseja cancelar o serviço? O dinheiro será devolvido automaticamente ao seu vizinho.")){
+                    btnWorkerCancel.innerText = "Devolvendo...";
+                    // Devolve o dinheiro para o ID de quem criou o pedido
+                    await updateDoc(doc(db, "users", data.creatorId), { saldo: increment(parseFloat(data.valor)) });
+                    await updateDoc(doc(db, "servicos", id), { status: "cancelado" });
+                    sheet.classList.add('translate-y-full');
+                }
+            };
+        }
+
+        // ACEITAR E FINALIZAR
         const actionBtn = document.getElementById('btnAction');
         if (actionBtn) {
             actionBtn.onclick = async () => {
@@ -101,7 +133,6 @@ export function initMap() {
                     await updateDoc(ref, { status: "aceito", worker: auth.currentUser.uid, workerName: prof.name, workerPhone: prof.phone });
                     sheet.classList.add('translate-y-full');
                 } else {
-                    // SE CLICOU EM FINALIZAR, CHAMA A AVALIAÇÃO
                     if(confirm("Confirma que o serviço foi concluído? O dinheiro será transferido agora.")){
                         abrirModalAvaliacao(id, data);
                         sheet.classList.add('translate-y-full');
@@ -111,9 +142,7 @@ export function initMap() {
         }
     }
 
-    // ==========================================
-    // LÓGICA DE AVALIAÇÃO (ESTRELAS) E PAGAMENTO
-    // ==========================================
+    // AVALIAÇÃO E TRANSFERÊNCIA BANCÁRIA
     let notaSelecionada = 0;
     const modalRating = document.getElementById('modalRating');
     const stars = document.querySelectorAll('.star-btn');
@@ -123,7 +152,6 @@ export function initMap() {
         star.onclick = (e) => {
             notaSelecionada = parseInt(e.target.getAttribute('data-value'));
             btnSubmitRating.disabled = false;
-            // Pinta as estrelas de amarelo até a nota selecionada
             stars.forEach((s, index) => {
                 if(index < notaSelecionada) {
                     s.classList.remove('text-slate-300'); s.classList.add('text-yellow-400');
@@ -139,7 +167,6 @@ export function initMap() {
         modalRating.classList.remove('hidden');
         modalRating.classList.add('flex');
         
-        // Reseta as estrelas sempre que abre
         notaSelecionada = 0;
         btnSubmitRating.disabled = true;
         stars.forEach(s => { s.classList.remove('text-yellow-400'); s.classList.add('text-slate-300'); });
@@ -148,11 +175,20 @@ export function initMap() {
             btnSubmitRating.innerText = "Processando...";
             try {
                 const valorNum = parseFloat(orderData.valor);
+                const workerRef = doc(db, "users", orderData.worker);
                 
-                // 1. Transfere o dinheiro para o trabalhador usando increment
-                await updateDoc(doc(db, "users", orderData.worker), { saldo: increment(valorNum) });
+                const workerSnap = await getDoc(workerRef);
+                const currentStars = workerSnap.exists() && workerSnap.data().estrelas !== undefined ? workerSnap.data().estrelas : 5.0;
+                const totalAvaliacoes = workerSnap.exists() && workerSnap.data().avaliacoes !== undefined ? workerSnap.data().avaliacoes : 0;
                 
-                // 2. Salva a avaliação e finaliza o pedido de vez
+                const novaMedia = ((currentStars * totalAvaliacoes) + notaSelecionada) / (totalAvaliacoes + 1);
+
+                await updateDoc(workerRef, { 
+                    saldo: increment(valorNum),
+                    estrelas: novaMedia,
+                    avaliacoes: increment(1)
+                });
+                
                 await updateDoc(doc(db, "servicos", orderId), { 
                     status: "concluido", 
                     nota: notaSelecionada 
@@ -160,19 +196,16 @@ export function initMap() {
 
                 modalRating.classList.add('hidden');
                 modalRating.classList.remove('flex');
-                alert("Serviço finalizado com sucesso! O dinheiro foi transferido.");
+                alert("Serviço finalizado! O dinheiro foi transferido.");
             } catch(e) {
-                console.error(e); 
-                alert("Erro ao finalizar.");
+                console.error(e); alert("Erro ao finalizar.");
             } finally {
                 btnSubmitRating.innerText = "Avaliar e Fechar";
             }
         };
     }
 
-    // ==========================================
-    // LÓGICA DO NOVO PEDIDO (COBRANÇA)
-    // ==========================================
+    // NOVO PEDIDO
     const modalOrder = document.getElementById('modalNewOrder');
 
     document.getElementById('btnAddOrder').onclick = () => {
@@ -191,7 +224,6 @@ export function initMap() {
         const valueStr = document.getElementById('orderValue').value.trim();
         
         if (!title || !valueStr) return alert("Preencha título e valor!");
-        
         const valorNum = parseFloat(valueStr);
         if (valorNum <= 0) return alert("O valor deve ser maior que zero.");
 
@@ -206,7 +238,6 @@ export function initMap() {
         btn.innerText = "Descontando da Carteira..."; btn.disabled = true;
 
         try {
-            // DESCONTA DA CARTEIRA PRIMEIRO
             await updateDoc(doc(db, "users", auth.currentUser.uid), { saldo: increment(-valorNum) });
 
             const center = map.getCenter();
@@ -218,6 +249,7 @@ export function initMap() {
                 lng: center.lng,
                 status: "aberto",
                 autor: auth.currentUser.email,
+                creatorId: auth.currentUser.uid, // <-- MUDANÇA VITAL PARA O ESTORNO FUNCIONAR
                 creatorPhone: prof.phone,
                 creatorName: prof.name,
                 criadoEm: serverTimestamp()
@@ -237,13 +269,10 @@ export function initMap() {
         }
     };
 
-    // ==========================================
-    // LÓGICA DO GPS
-    // ==========================================
     document.getElementById('btnGps').onclick = () => {
         navigator.geolocation.getCurrentPosition(
             p => map.flyTo([p.coords.latitude, p.coords.longitude], 17),
-            err => alert("Ative a localização do navegador para usar o GPS.")
+            err => alert("Ative a localização do navegador.")
         );
     };
 }
