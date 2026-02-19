@@ -13,14 +13,11 @@
     <div id="screen-login" class="h-full w-full flex flex-col items-center justify-center p-6 bg-white transition-opacity duration-300">
         <div class="w-full max-w-sm">
             <h1 class="text-4xl font-black text-blue-600 mb-2 text-center">VIZIN</h1>
-            <p class="text-slate-500 mb-8 text-center font-medium">Sua vizinhança conectada.</p>
-            
-            <input type="email" id="authEmail" placeholder="Seu e-mail" class="w-full p-4 mb-4 bg-slate-100 rounded-xl border border-transparent focus:border-blue-500 focus:bg-white focus:outline-none transition-all">
-            <input type="password" id="authPassword" placeholder="Sua senha" class="w-full p-4 mb-6 bg-slate-100 rounded-xl border border-transparent focus:border-blue-500 focus:bg-white focus:outline-none transition-all">
-            
-            <button id="btnLogin" class="w-full py-4 bg-blue-600 text-white rounded-xl font-bold text-lg hover:bg-blue-700 active:scale-95 transition-all mb-3 shadow-lg shadow-blue-200">Entrar</button>
-            <button id="btnRegister" class="w-full py-4 bg-white text-blue-600 border-2 border-blue-600 rounded-xl font-bold text-lg hover:bg-blue-50 active:scale-95 transition-all">Criar nova conta</button>
-            
+            <p class="text-slate-500 mb-8 text-center font-medium">Sua vizinhança conectada e segura.</p>
+            <input type="email" id="authEmail" placeholder="Seu e-mail" class="w-full p-4 mb-4 bg-slate-100 rounded-xl outline-none focus:ring-2 ring-blue-500">
+            <input type="password" id="authPassword" placeholder="Sua senha" class="w-full p-4 mb-6 bg-slate-100 rounded-xl outline-none focus:ring-2 ring-blue-500">
+            <button id="btnLogin" class="w-full py-4 bg-blue-600 text-white rounded-xl font-bold text-lg mb-3 shadow-lg shadow-blue-200 active:scale-95 transition-all">Entrar</button>
+            <button id="btnRegister" class="w-full py-4 bg-white text-blue-600 border-2 border-blue-600 rounded-xl font-bold text-lg active:scale-95 transition-all">Criar nova conta</button>
             <p id="authStatus" class="mt-4 text-center font-bold text-sm h-6 text-red-500"></p>
         </div>
     </div>
@@ -28,15 +25,17 @@
     <div id="screen-app" class="h-full w-full flex flex-col relative hidden">
         <header class="bg-white/90 backdrop-blur-md p-4 shadow-sm z-[2000] flex justify-between items-center absolute top-0 w-full">
             <span class="font-black text-blue-600 text-xl tracking-tighter">VIZIN</span>
-            <button id="btnOpenProfile" class="bg-slate-100 p-2 px-4 rounded-full text-sm font-bold border border-slate-200 active:scale-95 transition-all">Perfil 👤</button>
+            <div class="flex gap-2">
+                <button id="btnOpenOrders" class="bg-slate-100 p-2 px-3 rounded-full text-sm font-bold border border-slate-200 active:scale-95">Pedidos 📋</button>
+                <button id="btnOpenProfile" class="bg-slate-100 p-2 px-3 rounded-full text-sm font-bold border border-slate-200 active:scale-95">Perfil 👤</button>
+            </div>
         </header>
 
         <main class="flex-1 relative h-full w-full">
             <div id="map" class="h-full w-full z-[1]"></div>
-            
             <div class="absolute bottom-8 right-6 z-[1000] flex flex-col gap-4">
-                <button id="btnGps" class="w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center text-xl border border-slate-200 active:scale-90 transition-all">🎯</button>
-                <button id="btnAddOrder" class="w-16 h-16 bg-blue-600 rounded-full shadow-xl flex items-center justify-center text-white text-3xl hover:bg-blue-700 active:scale-90 transition-all shadow-blue-300">+</button>
+                <button id="btnGps" class="w-12 h-12 bg-white rounded-full shadow-lg flex justify-center items-center text-xl border border-slate-200 active:scale-90">🎯</button>
+                <button id="btnAddOrder" class="w-16 h-16 bg-blue-600 rounded-full shadow-xl flex justify-center items-center text-white text-3xl shadow-blue-300 active:scale-90">+</button>
             </div>
         </main>
 
@@ -51,37 +50,47 @@
             <div class="bg-white w-full max-w-md mx-auto rounded-[24px] p-6 shadow-2xl" onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-2xl font-black text-slate-800">Pedir Ajuda</h2>
-                    <button id="btnCloseOrderModal" class="text-slate-400 font-bold text-3xl px-2 active:scale-90 transition-all">&times;</button>
+                    <button id="btnCloseOrderModal" class="text-slate-400 font-bold text-3xl px-2 active:scale-90">&times;</button>
                 </div>
-                
-                <input id="orderTitle" type="text" placeholder="O que você precisa? (ex: Comprar Pão)" class="w-full p-4 mb-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 outline-none font-medium">
-                
-                <textarea id="orderDesc" rows="2" placeholder="Detalhes (onde, como, etc)" class="w-full p-4 mb-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 outline-none font-medium"></textarea>
-                
+                <input id="orderTitle" type="text" placeholder="O que você precisa?" class="w-full p-4 mb-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 ring-blue-500 font-medium">
+                <textarea id="orderDesc" rows="2" placeholder="Detalhes adicionais" class="w-full p-4 mb-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 ring-blue-500 font-medium"></textarea>
                 <div class="flex items-center mb-6">
                     <span class="text-xl font-black text-blue-600 mr-3">R$</span>
-                    <input id="orderValue" type="number" placeholder="Valor pago (ex: 5.00)" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 outline-none font-medium">
+                    <input id="orderValue" type="number" placeholder="Valor pago" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 ring-blue-500 font-medium">
                 </div>
-                
-                <button id="btnSubmitOrder" class="w-full py-4 bg-blue-600 text-white rounded-xl font-bold text-lg hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-200">Publicar Pedido</button>
+                <button id="btnSubmitOrder" class="w-full py-4 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-200 active:scale-95">Publicar Pedido</button>
             </div>
         </div>
     </div>
 
-    <div id="screen-profile" class="h-full w-full flex flex-col bg-slate-50 p-6 hidden absolute top-0 z-[4000]">
+    <div id="screen-orders" class="h-full w-full flex flex-col bg-slate-50 p-6 hidden absolute top-0 z-[4000] overflow-y-auto">
+        <div class="w-full max-w-md mx-auto mt-10 pb-10">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-3xl font-black text-slate-800">Meus Pedidos</h2>
+                <button id="btnCloseOrders" class="text-slate-500 font-bold px-2 hover:text-slate-800">Voltar</button>
+            </div>
+            
+            <div class="flex mb-6 gap-2 bg-slate-200 p-1 rounded-xl">
+                <button id="tabPedi" class="flex-1 py-2 bg-white text-blue-600 rounded-lg font-bold shadow-sm transition-all">Eu Pedi</button>
+                <button id="tabAceitei" class="flex-1 py-2 bg-transparent text-slate-500 rounded-lg font-bold transition-all">Eu Aceitei</button>
+            </div>
+
+            <div id="ordersList" class="space-y-4">
+                </div>
+        </div>
+    </div>
+
+    <div id="screen-profile" class="h-full w-full flex flex-col bg-slate-50 p-6 hidden absolute top-0 z-[5000]">
         <div class="w-full max-w-sm mx-auto mt-10">
             <h2 class="text-3xl font-black text-slate-800 mb-2">Meu Perfil</h2>
-            <p class="text-slate-500 mb-8">Dados reais geram confiança na comunidade.</p>
-            
+            <p class="text-slate-500 mb-8">Dados reais garantem sua segurança e da comunidade.</p>
             <label class="font-bold text-sm text-slate-600 ml-1">Nome Completo</label>
-            <input id="profileName" type="text" placeholder="Ex: João Silva" class="w-full p-4 mb-4 mt-1 bg-white rounded-xl border border-slate-200 focus:border-blue-500 focus:outline-none transition-all">
-            
-            <label class="font-bold text-sm text-slate-600 ml-1">WhatsApp (Apenas números)</label>
-            <input id="profilePhone" type="tel" placeholder="11999999999" class="w-full p-4 mb-8 mt-1 bg-white rounded-xl border border-slate-200 focus:border-blue-500 focus:outline-none transition-all">
-            
-            <button id="btnSaveProfile" class="w-full py-4 bg-green-500 text-white rounded-xl font-bold text-lg hover:bg-green-600 active:scale-95 transition-all mb-3 shadow-lg shadow-green-200">Salvar Dados</button>
-            <button id="btnCloseProfile" class="w-full py-4 bg-transparent text-slate-500 font-bold hover:text-slate-800 transition-all">Voltar</button>
-            <button id="btnLogout" class="w-full py-4 mt-4 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition-all">Sair da Conta</button>
+            <input id="profileName" type="text" placeholder="Ex: João Silva" class="w-full p-4 mb-4 mt-1 rounded-xl outline-none focus:ring-2 ring-blue-500 border border-slate-200">
+            <label class="font-bold text-sm text-slate-600 ml-1">WhatsApp</label>
+            <input id="profilePhone" type="tel" placeholder="11999999999" class="w-full p-4 mb-8 mt-1 rounded-xl outline-none focus:ring-2 ring-blue-500 border border-slate-200">
+            <button id="btnSaveProfile" class="w-full py-4 bg-green-500 text-white rounded-xl font-bold shadow-lg shadow-green-200 active:scale-95 mb-3">Salvar Dados</button>
+            <button id="btnCloseProfile" class="w-full py-4 bg-transparent text-slate-500 font-bold">Voltar</button>
+            <button id="btnLogout" class="w-full py-4 mt-4 bg-red-50 text-red-600 rounded-xl font-bold">Sair da Conta</button>
         </div>
     </div>
 

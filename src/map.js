@@ -6,21 +6,12 @@ import { getUserProfile } from './profile.js';
 let map, markers = {};
 
 export function initMap() {
-    if (map) {
-        setTimeout(() => map.invalidateSize(), 100);
-        return; 
-    }
+    if (map) { setTimeout(() => map.invalidateSize(), 100); return; }
 
-    // ==========================================
-    // 1. INICIALIZAÇÃO DO MAPA
-    // ==========================================
     map = L.map('map', { zoomControl: false }).setView([-23.1791, -45.8872], 14);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
     setTimeout(() => map.invalidateSize(), 100);
 
-    // ==========================================
-    // 2. ESCUTAR O BANCO DE DADOS (PINOS NO MAPA)
-    // ==========================================
     onSnapshot(collection(db, "servicos"), (snap) => {
         snap.forEach(d => {
             const data = d.data();
@@ -44,17 +35,16 @@ export function initMap() {
         });
     });
 
-    // ==========================================
-    // 3. MOSTRAR DETALHES DO PEDIDO (BOTTOM SHEET)
-    // ==========================================
     function showDetails(id, data) {
         const isMine = data.autor === auth.currentUser.email;
+        
+        // Lógica de Segurança e Transparência
+        const phoneToCall = isMine ? data.workerPhone : data.creatorPhone;
+        const otherPersonName = isMine ? data.workerName : data.creatorName;
+        const roleLabel = isMine ? "Quem vai fazer" : "Quem pediu";
+
         const sheet = document.getElementById('bottomSheet');
         const content = document.getElementById('sheetContent');
-
-        // Lógica de quem liga para quem:
-        // Se eu criei (isMine), eu ligo pro trabalhador. Senão, eu ligo pro criador.
-        const phoneToCall = isMine ? data.workerPhone : data.creatorPhone;
 
         content.innerHTML = `
             <div class="flex justify-between items-start mb-4">
@@ -64,26 +54,27 @@ export function initMap() {
             <p class="text-slate-500 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100">${data.descricao || 'Sem instruções.'}</p>
             
             <div class="space-y-3">
-                ${data.status === 'aberto' && !isMine ? `<button id="btnAction" class="w-full bg-blue-600 text-white p-4 rounded-2xl font-bold">ACEITAR SERVIÇO</button>` : ''}
+                ${data.status === 'aberto' && !isMine ? `<button id="btnAction" class="w-full bg-blue-600 text-white p-4 rounded-2xl font-bold active:scale-95 transition-all">ACEITAR SERVIÇO</button>` : ''}
+                
                 ${data.status === 'aceito' ? `
                     <div class="p-4 bg-green-50 rounded-2xl border border-green-100 text-center">
-                        <p class="text-green-700 font-medium mb-2">Em andamento</p>
+                        <p class="text-green-800 font-bold mb-1">Serviço em Andamento</p>
+                        ${otherPersonName ? `<p class="text-sm text-green-700 mb-3">👤 ${roleLabel}: <b>${otherPersonName}</b></p>` : ''}
+                        
                         ${phoneToCall 
-                            ? `<a href="https://wa.me/55${phoneToCall}" target="_blank" class="text-green-600 font-bold underline">Chamar no WhatsApp</a>` 
+                            ? `<a href="https://wa.me/55${phoneToCall}" target="_blank" class="block w-full bg-green-600 text-white font-bold py-3 rounded-xl mt-2 active:scale-95">Chamar no WhatsApp</a>` 
                             : `<p class="text-sm text-red-500 font-bold">Número indisponível (Pedido antigo)</p>`
                         }
                     </div>
-                    ${isMine ? `<button id="btnAction" class="w-full bg-slate-900 text-white p-4 rounded-2xl font-bold">FINALIZAR E PAGAR</button>` : ''}
+                    ${isMine ? `<button id="btnAction" class="w-full bg-slate-900 text-white p-4 rounded-2xl font-bold mt-2 active:scale-95 transition-all">FINALIZAR E PAGAR</button>` : ''}
                 ` : ''}
+                
                 <button id="btnFecharDetalhes" class="w-full p-2 text-slate-400 font-medium">Fechar</button>
             </div>
         `;
 
         sheet.classList.remove('translate-y-full');
-
-        document.getElementById('btnFecharDetalhes').onclick = () => {
-            sheet.classList.add('translate-y-full');
-        };
+        document.getElementById('btnFecharDetalhes').onclick = () => { sheet.classList.add('translate-y-full'); };
 
         const actionBtn = document.getElementById('btnAction');
         if (actionBtn) {
@@ -94,6 +85,7 @@ export function initMap() {
                 if (type === "accept") {
                     const prof = await getUserProfile();
                     if(!prof || !prof.phone) return alert("Preencha o seu perfil e WhatsApp antes de aceitar um serviço!");
+                    // SALVA QUEM ACEITOU PARA O HISTÓRICO E SEGURANÇA
                     await updateDoc(ref, { status: "aceito", worker: auth.currentUser.uid, workerName: prof.name, workerPhone: prof.phone });
                 } else {
                     await updateDoc(ref, { status: "concluido" });
@@ -103,20 +95,15 @@ export function initMap() {
         }
     }
 
-    // ==========================================
-    // 4. LÓGICA DO NOVO PEDIDO (MODAL)
-    // ==========================================
     const modalOrder = document.getElementById('modalNewOrder');
 
     document.getElementById('btnAddOrder').onclick = () => {
-        modalOrder.classList.remove('hidden');
-        modalOrder.classList.add('flex');
+        modalOrder.classList.remove('hidden'); modalOrder.classList.add('flex');
         if (map) map.dragging.disable(); 
     };
 
     document.getElementById('btnCloseOrderModal').onclick = () => {
-        modalOrder.classList.add('hidden');
-        modalOrder.classList.remove('flex');
+        modalOrder.classList.add('hidden'); modalOrder.classList.remove('flex');
         if (map) map.dragging.enable(); 
     };
 
@@ -127,20 +114,17 @@ export function initMap() {
         
         if (!title || !value) return alert("Preencha o título e o valor!");
 
-        // NOVA TRAVA: O criador também precisa ter perfil completo agora
         const prof = await getUserProfile();
         if(!prof || !prof.phone) {
-            alert("⚠️ Preencha o seu Perfil e WhatsApp antes de pedir ajuda! Seus vizinhos precisam saber como falar com você.");
+            alert("⚠️ Segurança: Preencha seu Nome e WhatsApp no Perfil antes de pedir ajuda. O prestador precisa saber quem você é.");
             return;
         }
 
         const btn = document.getElementById('btnSubmitOrder');
-        btn.innerText = "Publicando...";
-        btn.disabled = true;
+        btn.innerText = "Publicando..."; btn.disabled = true;
 
         try {
             const center = map.getCenter();
-            
             await addDoc(collection(db, "servicos"), {
                 titulo: title,
                 descricao: desc,
@@ -149,7 +133,8 @@ export function initMap() {
                 lng: center.lng,
                 status: "aberto",
                 autor: auth.currentUser.email,
-                creatorPhone: prof.phone, // AGORA ESTAMOS SALVANDO O TELEFONE DE QUEM PEDIU
+                creatorPhone: prof.phone,
+                creatorName: prof.name, // SALVANDO NOME DO CRIADOR PARA SEGURANÇA
                 criadoEm: serverTimestamp()
             });
 
@@ -157,27 +142,20 @@ export function initMap() {
             document.getElementById('orderDesc').value = '';
             document.getElementById('orderValue').value = '';
             
-            modalOrder.classList.add('hidden');
-            modalOrder.classList.remove('flex');
+            modalOrder.classList.add('hidden'); modalOrder.classList.remove('flex');
             if (map) map.dragging.enable(); 
             
         } catch (error) {
-            console.error("Erro ao criar pedido:", error);
             alert("Erro ao publicar o pedido.");
         } finally {
-            btn.innerText = "Publicar Pedido";
-            btn.disabled = false;
+            btn.innerText = "Publicar Pedido"; btn.disabled = false;
         }
     };
 
-    // ==========================================
-    // 5. LÓGICA DO BOTÃO GPS
-    // ==========================================
     document.getElementById('btnGps').onclick = () => {
         navigator.geolocation.getCurrentPosition(
             p => map.flyTo([p.coords.latitude, p.coords.longitude], 17),
             err => alert("Ative a localização do navegador para usar o GPS.")
         );
     };
-
 }
