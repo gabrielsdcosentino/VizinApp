@@ -1,12 +1,11 @@
 import { db, auth } from './firebaseConfig.js';
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, onSnapshot } from "firebase/firestore"; // Importamos o onSnapshot aqui
 import { signOut } from "firebase/auth";
 import { showScreen } from '../main.js';
 
-// VALIDAÇÃO DE CPF COM CHEAT CODE PARA VOCÊ TESTAR
 function validarCPF(cpf) {
     cpf = cpf.replace(/[^\d]+/g, '');
-    if (cpf === '11111111111') return true; // CHEAT CODE!
+    if (cpf === '11111111111') return true; 
     if (cpf.length !== 11 || !!cpf.match(/(\d)\1{10}/)) return false;
     let soma = 0, resto;
     for (let i = 1; i <= 9; i++) soma = soma + parseInt(cpf.substring(i - 1, i)) * (11 - i);
@@ -21,41 +20,52 @@ function validarCPF(cpf) {
     return true;
 }
 
+let isSetup = false;
+let unsubscribeSaldo = null;
+
 export function setupProfile() {
     const btnOpenProfile = document.getElementById('btnOpenProfile');
     const btnCloseProfile = document.getElementById('btnCloseProfile');
     const btnSaveProfile = document.getElementById('btnSaveProfile');
     const btnLogout = document.getElementById('btnLogout');
 
+    // ==========================================
+    // MAGIA FINANCEIRA: CARTEIRA EM TEMPO REAL
+    // ==========================================
+    if (auth.currentUser) {
+        if(unsubscribeSaldo) unsubscribeSaldo(); // Limpa o radar antigo
+        // Fica vigiando o saldo do usuário logado 24h por dia
+        unsubscribeSaldo = onSnapshot(doc(db, "users", auth.currentUser.uid), (docSnap) => {
+            if (docSnap.exists() && docSnap.data().saldo !== undefined) {
+                document.getElementById('profileSaldo').innerText = parseFloat(docSnap.data().saldo).toFixed(2).replace('.', ',');
+            }
+        });
+    }
+
+    // Trava para os botões não se multiplicarem
+    if (isSetup) return;
+    isSetup = true;
+
     btnOpenProfile.onclick = async () => {
         showScreen('screen-profile');
         document.getElementById('profileName').value = '';
         document.getElementById('profileCpf').value = '';
         document.getElementById('profilePhone').value = '';
-        document.getElementById('profileSaldo').innerText = '0,00';
         
-        const user = auth.currentUser;
-        if(user) {
-            try {
-                const docSnap = await getDoc(doc(db, "users", user.uid));
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    document.getElementById('profileName').value = data.name || '';
-                    document.getElementById('profileCpf').value = data.cpf || '';
-                    document.getElementById('profilePhone').value = data.phone || '';
-                    
-                    // Mostra o saldo formatado
-                    if (data.saldo !== undefined) {
-                        document.getElementById('profileSaldo').innerText = parseFloat(data.saldo).toFixed(2).replace('.', ',');
-                    }
-                    
-                    if (data.cpf) {
-                        document.getElementById('profileCpf').disabled = true;
-                        document.getElementById('profileCpf').classList.add('bg-slate-100', 'text-slate-500');
-                    }
+        try {
+            const docSnap = await getDoc(doc(db, "users", auth.currentUser.uid));
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                document.getElementById('profileName').value = data.name || '';
+                document.getElementById('profileCpf').value = data.cpf || '';
+                document.getElementById('profilePhone').value = data.phone || '';
+                
+                if (data.cpf) {
+                    document.getElementById('profileCpf').disabled = true;
+                    document.getElementById('profileCpf').classList.add('bg-slate-100', 'text-slate-500');
                 }
-            } catch (e) { console.error("Erro:", e); }
-        }
+            }
+        } catch (e) { console.error("Erro:", e); }
     };
 
     btnCloseProfile.onclick = () => { showScreen('screen-app'); };
@@ -67,16 +77,15 @@ export function setupProfile() {
         const user = auth.currentUser;
 
         if (!name || !cpfRaw || !phone) return alert("Preencha todos os campos.");
-        if (!validarCPF(cpfRaw)) return alert("❌ CPF Inválido. Digite um CPF real (ou 11111111111 para teste).");
+        if (!validarCPF(cpfRaw)) return alert("❌ CPF Inválido.");
 
         btnSaveProfile.innerText = "Salvando...";
         
         try {
-            // Busca o usuário atual para ver se ele já tem saldo. Se não tem, ganha R$ 100
             const docSnap = await getDoc(doc(db, "users", user.uid));
-            let saldoAtual = 100; // Saldo presente de boas vindas
+            let saldoAtual = 100; // Se a pessoa não tiver saldo, ganha 100.
             if (docSnap.exists() && docSnap.data().saldo !== undefined) {
-                saldoAtual = docSnap.data().saldo;
+                saldoAtual = docSnap.data().saldo; // Mantém o saldo exato que está no banco
             }
 
             await setDoc(doc(db, "users", user.uid), {
@@ -84,7 +93,7 @@ export function setupProfile() {
                 cpf: cpfRaw.replace(/[^\d]+/g, ''),
                 phone: phone,
                 email: user.email,
-                saldo: saldoAtual, // SALVA O SALDO
+                saldo: saldoAtual,
                 verifiedLevel: 1
             }, { merge: true });
             
@@ -97,7 +106,10 @@ export function setupProfile() {
         } catch (e) { alert("Erro ao salvar."); btnSaveProfile.innerText = "Salvar"; }
     };
 
-    btnLogout.onclick = async () => { await signOut(auth); };
+    btnLogout.onclick = async () => { 
+        if(unsubscribeSaldo) unsubscribeSaldo(); // Desliga o radar ao sair
+        await signOut(auth); 
+    };
 }
 
 export async function getUserProfile() {
