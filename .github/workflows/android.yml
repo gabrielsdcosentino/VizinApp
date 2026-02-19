@@ -15,7 +15,7 @@ jobs:
       - name: 2. Preparar o Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: 3. Instalar Dependências e Construir Web
         run: |
