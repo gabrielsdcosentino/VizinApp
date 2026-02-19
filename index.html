@@ -26,7 +26,7 @@
         <div id="map"></div>
         
         <div class="absolute top-12 left-4 right-4 z-[1000]">
-            <div id="btnAddOrder" class="bg-white shadow-xl shadow-slate-300/50 rounded-[24px] p-4 flex items-center gap-4 active:scale-95 transition-transform">
+            <div id="btnAddOrder" class="bg-white shadow-xl shadow-slate-300/50 rounded-[24px] p-4 flex items-center gap-4 active:scale-95 transition-transform cursor-pointer">
                 <div class="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center text-black">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6"><path fill-rule="evenodd" d="M10.5 3.75a6.75 6.75 0 100 13.5 6.75 6.75 0 000-13.5zM2.25 10.5a8.25 8.25 0 1114.59 5.28l4.69 4.69a.75.75 0 11-1.06 1.06l-4.69-4.69A8.25 8.25 0 012.25 10.5z" clip-rule="evenodd" /></svg>
                 </div>
@@ -97,9 +97,9 @@
     </div>
 
     <div id="screen-orders" class="fixed inset-0 bg-slate-50 z-[4000] hidden flex-col pb-8">
-        <header class="pt-6 px-6 pb-4 bg-white border-b border-slate-100 flex justify-between items-center">
+        <header class="pt-12 px-6 pb-4 bg-white border-b border-slate-100 flex justify-between items-center">
             <h2 class="text-3xl font-black text-black">Atividade</h2>
-            <button id="btnCloseOrders" class="bg-slate-100 w-10 h-10 rounded-full font-bold active:scale-95 text-slate-600">&times;</button>
+            <button id="btnCloseOrders" class="bg-slate-100 w-10 h-10 rounded-full font-bold active:scale-95 text-slate-600 flex items-center justify-center">&times;</button>
         </header>
         <div class="p-6 flex-1 overflow-y-auto">
             <div class="flex mb-6 gap-2 bg-slate-200 p-1 rounded-2xl">
@@ -111,37 +111,47 @@
     </div>
 
     <div id="screen-profile" class="fixed inset-0 bg-slate-50 z-[5000] hidden flex-col pb-8">
-        <header class="pt-6 px-6 pb-4 bg-white border-b border-slate-100 flex justify-between items-center">
-            <h2 class="text-3xl font-black text-black">Conta</h2>
-            <button id="btnCloseProfile" class="bg-slate-100 w-10 h-10 rounded-full font-bold active:scale-95 text-slate-600">&times;</button>
+        <header class="pt-12 px-6 pb-6 bg-white flex justify-between items-center">
+            <h2 class="text-4xl font-black text-black tracking-tight">Conta</h2>
+            <button id="btnCloseProfile" class="bg-slate-100 w-10 h-10 rounded-full font-bold active:scale-95 text-slate-600 flex items-center justify-center">&times;</button>
         </header>
+        
         <div class="p-6 flex-1 overflow-y-auto">
-            <div class="flex gap-3 mb-6">
-                <div class="flex-1 bg-black text-white p-5 rounded-[24px] shadow-xl relative overflow-hidden">
-                    <p class="text-slate-400 font-medium mb-1 text-xs uppercase">Saldo Vizin</p>
-                    <h3 class="text-3xl font-black">R$ <span id="profileSaldo">0,00</span></h3>
+            
+            <div class="flex items-center gap-4 mb-8">
+                <div class="w-20 h-20 bg-slate-200 rounded-full flex items-center justify-center text-slate-400 shadow-inner">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-10 h-10"><path fill-rule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clip-rule="evenodd" /></svg>
                 </div>
-                <div class="flex-1 bg-white border border-slate-100 p-5 rounded-[24px] flex flex-col justify-center items-center shadow-sm">
-                    <p class="text-slate-400 font-medium mb-1 text-xs uppercase">Reputação</p>
-                    <h3 class="text-3xl font-black text-black flex items-center gap-1">
-                        <span id="profileRating">Novo</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-yellow-400"><path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.434c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.434 2.082-5.005z" clip-rule="evenodd" /></svg>
-                    </h3>
+                <div>
+                    <h3 id="profileDisplayName" class="text-2xl font-bold text-black">Configurar Perfil</h3>
+                    <div class="text-slate-500 font-medium flex items-center gap-1 mt-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 text-yellow-400"><path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.434c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.434 2.082-5.005z" clip-rule="evenodd" /></svg>
+                        <span id="profileRating">Novo Vizin</span>
+                    </div>
                 </div>
             </div>
+
+            <div class="bg-black text-white p-6 rounded-[24px] shadow-xl mb-8 relative overflow-hidden">
+                <p class="text-slate-400 font-medium mb-1 text-sm uppercase tracking-wider">Vizin Cash</p>
+                <h3 class="text-4xl font-black tracking-tight">R$ <span id="profileSaldo">0,00</span></h3>
+                <div class="absolute -right-4 -bottom-4 w-28 h-28 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
+            </div>
             
-            <input id="profileName" type="text" placeholder="Nome Completo" class="w-full p-4 mb-4 bg-white rounded-2xl outline-none border border-slate-200 focus:border-black font-medium">
-            <input id="profileCpf" type="text" maxlength="11" placeholder="CPF (Apenas números)" class="w-full p-4 mb-4 bg-white rounded-2xl outline-none border border-slate-200 focus:border-black font-medium">
-            <input id="profilePhone" type="tel" placeholder="WhatsApp (DDD + Número)" class="w-full p-4 mb-8 bg-white rounded-2xl outline-none border border-slate-200 focus:border-black font-medium">
+            <h4 class="text-lg font-bold text-black mb-4">Dados Pessoais</h4>
+            <div class="space-y-4 mb-8">
+                <input id="profileName" type="text" placeholder="Nome Completo" class="w-full p-4 bg-slate-100 rounded-2xl outline-none focus:ring-2 ring-black font-medium text-black">
+                <input id="profileCpf" type="text" maxlength="11" placeholder="CPF (Use 11111111111)" class="w-full p-4 bg-slate-100 rounded-2xl outline-none focus:ring-2 ring-black font-medium text-black">
+                <input id="profilePhone" type="tel" placeholder="WhatsApp (DDD + Número)" class="w-full p-4 bg-slate-100 rounded-2xl outline-none focus:ring-2 ring-black font-medium text-black">
+            </div>
             
-            <button id="btnSaveProfile" class="w-full py-4 bg-black text-white rounded-2xl font-bold shadow-lg active:scale-95 mb-3 transition-all">Guardar</button>
-            <button id="btnLogout" class="w-full py-4 mt-4 bg-red-50 text-red-600 rounded-2xl font-bold active:scale-95 border border-red-100">Sair da Conta</button>
+            <button id="btnSaveProfile" class="w-full py-4 bg-slate-100 text-black rounded-2xl font-bold active:scale-95 transition-all mb-4">Salvar Alterações</button>
+            <button id="btnLogout" class="w-full py-4 bg-red-50 text-red-600 rounded-2xl font-bold active:scale-95">Sair da Conta</button>
         </div>
     </div>
 
     <div id="screen-chat" class="fixed inset-0 bg-slate-50 z-[6000] hidden flex-col pb-8">
-        <header class="pt-6 px-4 pb-4 bg-white shadow-sm flex items-center gap-3">
-            <button id="btnCloseChat" class="bg-slate-100 w-10 h-10 rounded-full font-bold text-black active:scale-90">&times;</button>
+        <header class="pt-12 px-4 pb-4 bg-white shadow-sm flex items-center gap-3">
+            <button id="btnCloseChat" class="bg-slate-100 w-10 h-10 flex items-center justify-center rounded-full font-bold text-black active:scale-90">&times;</button>
             <div>
                 <h2 class="font-black text-lg text-black leading-tight" id="chatTitle">Chat</h2>
                 <p class="text-xs text-green-600 font-bold">Conexão Segura</p>

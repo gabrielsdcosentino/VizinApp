@@ -1,120 +1,87 @@
 import { db, auth } from './firebaseConfig.js';
-import { doc, setDoc, getDoc, onSnapshot } from "firebase/firestore"; // Importamos o onSnapshot aqui
-import { signOut } from "firebase/auth";
-import { showScreen } from '../main.js';
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { showScreen } from '../main.js'; // Importa a função de trocar tela
 
-function validarCPF(cpf) {
-    cpf = cpf.replace(/[^\d]+/g, '');
-    if (cpf === '11111111111') return true; 
-    if (cpf.length !== 11 || !!cpf.match(/(\d)\1{10}/)) return false;
-    let soma = 0, resto;
-    for (let i = 1; i <= 9; i++) soma = soma + parseInt(cpf.substring(i - 1, i)) * (11 - i);
-    resto = (soma * 10) % 11;
-    if ((resto === 10) || (resto === 11)) resto = 0;
-    if (resto !== parseInt(cpf.substring(9, 10))) return false;
-    soma = 0;
-    for (let i = 1; i <= 10; i++) soma = soma + parseInt(cpf.substring(i - 1, i)) * (12 - i);
-    resto = (soma * 10) % 11;
-    if ((resto === 10) || (resto === 11)) resto = 0;
-    if (resto !== parseInt(cpf.substring(10, 11))) return false;
-    return true;
+// Função auxiliar para outros arquivos (como map.js) buscarem dados
+export async function getUserProfile() {
+    if(!auth.currentUser) return null;
+    const snap = await getDoc(doc(db, "users", auth.currentUser.uid));
+    return snap.exists() ? snap.data() : null;
 }
 
-let isSetup = false;
-let unsubscribeSaldo = null;
-
 export function setupProfile() {
-    const btnOpenProfile = document.getElementById('btnOpenProfile');
-    const btnCloseProfile = document.getElementById('btnCloseProfile');
-    const btnSaveProfile = document.getElementById('btnSaveProfile');
+    const btnOpen = document.getElementById('btnOpenProfile');
+    const btnClose = document.getElementById('btnCloseProfile');
+    const btnSave = document.getElementById('btnSaveProfile');
     const btnLogout = document.getElementById('btnLogout');
 
-    // ==========================================
-    // MAGIA FINANCEIRA: CARTEIRA EM TEMPO REAL
-    // ==========================================
-    if (auth.currentUser) {
-        if(unsubscribeSaldo) unsubscribeSaldo(); // Limpa o radar antigo
-        // Fica vigiando o saldo do usuário logado 24h por dia
-        unsubscribeSaldo = onSnapshot(doc(db, "users", auth.currentUser.uid), (docSnap) => {
-            if (docSnap.exists() && docSnap.data().saldo !== undefined) {
-                document.getElementById('profileSaldo').innerText = parseFloat(docSnap.data().saldo).toFixed(2).replace('.', ',');
-            }
-        });
-    }
-
-    // Trava para os botões não se multiplicarem
-    if (isSetup) return;
-    isSetup = true;
-
-    btnOpenProfile.onclick = async () => {
-        showScreen('screen-profile');
-        document.getElementById('profileName').value = '';
-        document.getElementById('profileCpf').value = '';
-        document.getElementById('profilePhone').value = '';
-        
-        try {
-            const docSnap = await getDoc(doc(db, "users", auth.currentUser.uid));
-            if (docSnap.exists()) {
-                const data = docSnap.data();
+    if(btnOpen) {
+        btnOpen.onclick = async () => {
+            showScreen('screen-profile');
+            
+            const data = await getUserProfile();
+            if (data) {
+                // Preenche os inputs
                 document.getElementById('profileName').value = data.name || '';
                 document.getElementById('profileCpf').value = data.cpf || '';
                 document.getElementById('profilePhone').value = data.phone || '';
                 
+                // Exibe o Nome no Topo (Pega apenas o primeiro nome)
+                document.getElementById('profileDisplayName').innerText = data.name ? data.name.split(' ')[0] : "Conta";
+                
+                // Exibe a Carteira
+                document.getElementById('profileSaldo').innerText = (data.saldo || 0).toFixed(2).replace('.', ',');
+                
+                // Exibe as Estrelas (A Mágica acontece aqui!)
+                const ratingSpan = document.getElementById('profileRating');
+                if (data.estrelas !== undefined) {
+                    ratingSpan.innerText = parseFloat(data.estrelas).toFixed(1);
+                } else {
+                    ratingSpan.innerText = "Novo Vizin";
+                }
+                
+                // Bloqueia CPF se já estiver preenchido
                 if (data.cpf) {
                     document.getElementById('profileCpf').disabled = true;
-                    document.getElementById('profileCpf').classList.add('bg-slate-100', 'text-slate-500');
+                    document.getElementById('profileCpf').classList.add('bg-slate-200', 'text-slate-500');
                 }
             }
-        } catch (e) { console.error("Erro:", e); }
-    };
+        };
+    }
 
-    btnCloseProfile.onclick = () => { showScreen('screen-app'); };
+    if(btnClose) btnClose.onclick = () => showScreen('screen-app');
 
-    btnSaveProfile.onclick = async () => {
-        const name = document.getElementById('profileName').value.trim();
-        const cpfRaw = document.getElementById('profileCpf').value.trim();
-        const phone = document.getElementById('profilePhone').value.trim();
-        const user = auth.currentUser;
+    if(btnSave) {
+        btnSave.onclick = async () => {
+            const name = document.getElementById('profileName').value.trim();
+            const cpf = document.getElementById('profileCpf').value.trim();
+            const phone = document.getElementById('profilePhone').value.trim();
 
-        if (!name || !cpfRaw || !phone) return alert("Preencha todos os campos.");
-        if (!validarCPF(cpfRaw)) return alert("❌ CPF Inválido.");
+            if(!name || !cpf || !phone) return alert("Preencha todos os dados!");
 
-        btnSaveProfile.innerText = "Salvando...";
-        
-        try {
-            const docSnap = await getDoc(doc(db, "users", user.uid));
-            let saldoAtual = 100; // Se a pessoa não tiver saldo, ganha 100.
-            if (docSnap.exists() && docSnap.data().saldo !== undefined) {
-                saldoAtual = docSnap.data().saldo; // Mantém o saldo exato que está no banco
+            btnSave.innerText = "Salvando...";
+            try {
+                // Usamos merge: true para não apagar o saldo ou as estrelas
+                await setDoc(doc(db, "users", auth.currentUser.uid), {
+                    name: name,
+                    cpf: cpf,
+                    phone: phone
+                }, { merge: true });
+                
+                alert("Perfil atualizado com sucesso!");
+                document.getElementById('profileDisplayName').innerText = name.split(' ')[0];
+            } catch (e) {
+                console.error(e);
+                alert("Erro ao salvar.");
+            } finally {
+                btnSave.innerText = "Salvar Alterações";
             }
+        };
+    }
 
-            await setDoc(doc(db, "users", user.uid), {
-                name: name,
-                cpf: cpfRaw.replace(/[^\d]+/g, ''),
-                phone: phone,
-                email: user.email,
-                saldo: saldoAtual,
-                verifiedLevel: 1
-            }, { merge: true });
-            
-            btnSaveProfile.innerText = "Salvo!";
-            setTimeout(() => {
-                btnSaveProfile.innerText = "Salvar e Verificar Conta";
-                showScreen('screen-app');
-            }, 1000);
-
-        } catch (e) { alert("Erro ao salvar."); btnSaveProfile.innerText = "Salvar"; }
-    };
-
-    btnLogout.onclick = async () => { 
-        if(unsubscribeSaldo) unsubscribeSaldo(); // Desliga o radar ao sair
-        await signOut(auth); 
-    };
-}
-
-export async function getUserProfile() {
-    try {
-        const docSnap = await getDoc(doc(db, "users", auth.currentUser.uid));
-        return docSnap.exists() ? docSnap.data() : null;
-    } catch (e) { return null; }
+    if(btnLogout) {
+        btnLogout.onclick = () => {
+            if(confirm("Deseja realmente sair?")) auth.signOut();
+        };
+    }
 }
